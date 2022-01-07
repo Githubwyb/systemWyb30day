@@ -1,0 +1,10 @@
+*.img
+*.lst
+*.sys
+*.bin
+*.bim
+*.lst
+*.obj
+*.map
+*.hrb
+*.gas

@@ -1,9 +1,10 @@
-TOOLPATH 	= ../z_tools/
-MAKE 		= $(TOOLPATH)make.exe -r
-NASK 		= $(TOOLPATH)nask.exe
-EDIMG 		= $(TOOLPATH)edimg.exe
-IMGTOL		= $(TOOLPATH)imgtol.com
-COPY 		= copy
+TOOLPATH 	= ../../z_tools
+# MAKE 		= $(TOOLPATH)/make.exe -r
+MAKE 		= make -r
+NASK 		= $(TOOLPATH)/nask.exe
+EDIMG 		= $(TOOLPATH)/edimg.exe
+IMGTOL		= $(TOOLPATH)/imgtol.com
+COPY 		= cp
 DEL 		= del
 
 # 默认生成img并复制到目录
@@ -17,7 +18,7 @@ ipl.bin : ipl.nas Makefile
 	$(NASK) ipl.nas ipl.bin ipl.lst
 
 haribote.img : ipl.bin Makefile
-	$(EDIMG) imgin:../z_tools/fdimg0at.tek \
+	$(EDIMG) imgin:$(TOOLPATH)/fdimg0at.tek \
 		wbinimg src:ipl.bin len:512 from:0 to:0 imgout:haribote.img
 
 # 命令
@@ -30,7 +31,7 @@ asm :
 
 run :
 	$(MAKE) img
-	$(COPY) haribote.img ..\..\common\haribote.img
+	$(COPY) haribote.img ../../common/haribote.img
 
 clean :
 	-$(DEL) ipl.bin

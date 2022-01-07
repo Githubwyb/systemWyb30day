@@ -48,7 +48,7 @@ retry:
     MOV     BX, 0
     MOV     DL, 0x00        ; A驱动器
     INT     0x13            ; 调用磁盘BIOS
-    JNC     fin             ; 没出错跳转fin
+    JNC     next            ; 没出错跳转next
     ADD     SI, 1           ; SI加1
     CMP     SI, 5           ; 比较SI和5
     JAE     error           ; SI >= 5，跳转到error
@@ -72,10 +72,9 @@ next:
     CMP     CH, CYLS
     JB      readloop        ; CH < 10，跳转readloop，10个柱面
 
-; 读取成功CPU睡觉
-fin:
-    HLT                     ; 让CPU停止，等待指令
-    JMP     fin             ; 无限循环
+; 现在我已经阅读了它，运行 haribote.sys！
+	MOV		[0x0ff0],CH		; 注意 IPL 读了多远
+	JMP		0xc200
 
 error:
     MOV     SI, msg
@@ -89,7 +88,9 @@ putloop:
     MOV     BX, 15          ; 指定字符颜色
     INT     0x10            ; 调用显卡BIOS
     JMP     putloop
-
+fin:
+    HLT                     ; 让CPU停止，等待指令
+    JMP     fin             ; 无限循环
 msg:
     DB      0x0a, 0x0a      ; 换行两次
     DB      "Load error"
