@@ -6,6 +6,8 @@ NASK     = $(TOOLPATH)/nask.exe
 CC1      = $(TOOLPATH)/cc1.exe -I$(INCPATH) -Os -Wall -quiet
 GAS2NASK = $(TOOLPATH)/gas2nask.exe -a
 OBJ2BIM  = $(TOOLPATH)/obj2bim.exe
+MAKEFONT = $(TOOLPATH)/makefont.exe
+BIN2OBJ  = $(TOOLPATH)/bin2obj.exe
 BIM2HRB  = $(TOOLPATH)/bim2hrb.exe
 RULEFILE = $(TOOLPATH)/haribote/haribote.rul
 EDIMG    = $(TOOLPATH)/edimg.exe
@@ -38,9 +40,16 @@ haribote.sys : asmhead.bin bootpack.hrb
 C_SOURCES = $(wildcard $(d)*.c)
 C_OBJS = $(patsubst %.c,%.obj,$(C_SOURCES))
 
-bootpack.bim : $(C_OBJS) naskfunc.obj
+bootpack.bim : $(C_OBJS) naskfunc.obj hankaku.obj
 	$(OBJ2BIM) @$(RULEFILE) out:bootpack.bim stack:3136k map:bootpack.map \
 		$^
+# 3MB+64KB=3136KB
+
+hankaku.bin : hankaku.txt Makefile
+	$(MAKEFONT) hankaku.txt hankaku.bin
+
+hankaku.obj : hankaku.bin Makefile
+	$(BIN2OBJ) hankaku.bin hankaku.obj _hankaku
 
 naskfunc.obj : naskfunc.nas
 	$(NASK) naskfunc.nas naskfunc.obj naskfunc.lst
