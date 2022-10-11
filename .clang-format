@@ -1,0 +1,9 @@
+BasedOnStyle: Google
+IndentWidth: 4
+TabWidth: 4
+SortIncludes: true
+AccessModifierOffset: -4
+AlignTrailingComments: true
+ColumnLimit: 120
+BinPackArguments: false
+

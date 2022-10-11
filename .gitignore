@@ -9,4 +9,8 @@
 *.hrb
 *.gas
 .vscode
-bootpack.nas
+
+*.nas
+!naskfunc.nas
+!ipl10.nas
+!asmhead.nas
