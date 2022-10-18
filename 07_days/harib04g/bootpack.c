@@ -77,16 +77,24 @@ void HariMain(void) {
 
     for (;;) {
         io_cli();
-        if (kfifo_is_empty(&g_keybuf)) {
+        if (kfifo_is_empty(&g_keybuf) && kfifo_is_empty(&g_mouseBuf)) {
             io_stihlt();
         } else {
             unsigned char i;
-            kfifo_get(&g_keybuf, &i);
-            io_sti();
             char s[4];
-            sprintf(s, "%02X", i);
-            boxfill8(binfo->vram, binfo->scrnx, COL8_009999, 0, 16, 15, 31);
-            put_font8_str(binfo->vram, binfo->scrnx, 0, 16, COL8_FFFFFF, s);
+            if (!kfifo_is_empty(&g_keybuf)) {
+                kfifo_get(&g_keybuf, &i);
+                io_sti();
+                sprintf(s, "%02X", i);
+                boxfill8(binfo->vram, binfo->scrnx, COL8_009999, 0, 16, 15, 31);
+                put_font8_str(binfo->vram, binfo->scrnx, 0, 16, COL8_FFFFFF, s);
+            } else if (!kfifo_is_empty(&g_mouseBuf)) {
+                kfifo_get(&g_mouseBuf, &i);
+                io_sti();
+                sprintf(s, "%02X", i);
+                boxfill8(binfo->vram, binfo->scrnx, COL8_009999, 32, 16, 47, 31);
+                put_font8_str(binfo->vram, binfo->scrnx, 32, 16, COL8_FFFFFF, s);
+            }
         }
     }
 }
