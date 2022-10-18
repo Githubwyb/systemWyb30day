@@ -9,7 +9,7 @@
 #define ADR_GDT 0x00270000       // GDT的内存位置
 #define LIMIT_GDT 0x0000ffff     // GDT占用的字节数
 #define ADR_BOTPAK 0x00280000    // bootpack.hrb所在的地址
-#define LIMIT_BOTPAK 0x0007ffff  // bootpack.hrb最大为512k
+#define LIMIT_BOTPAK 0x0007f     // bootpack.hrb最大为 4k x 128 = 512k
 
 // 全局gdt表
 static const struct gdt_page gdt_page = {.gdt = {
@@ -18,7 +18,7 @@ static const struct gdt_page gdt_page = {.gdt = {
                                              // kernel的代码段，也就是bootpack所在位置
                                              [GDT_ENTRY_KERNEL_CS] = GDT_ENTRY_INIT(0xc09a, ADR_BOTPAK, LIMIT_BOTPAK),
                                              // kernel控制的总内存大小
-                                             [GDT_ENTRY_KERNEL_DS] = GDT_ENTRY_INIT(0xc092, 0, 0xffffffff),
+                                             [GDT_ENTRY_KERNEL_DS] = GDT_ENTRY_INIT(0xc092, 0, 0xfffff),
 #endif
                                          }};
 
