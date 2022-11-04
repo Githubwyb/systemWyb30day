@@ -21,7 +21,7 @@ VRAM	EQU		0x0ff8			; 图形缓冲区的起始地址
 		MOV		BYTE [VMODE],8	; 记下画面模式
 		MOV		WORD [SCRNX],320
 		MOV		WORD [SCRNY],200
-		MOV		DWORD [VRAM],0x000a0000
+		MOV		DWORD [VRAM],0x000a0000		; 此模式下vram为0xa0000 ~ 0xaffff
 ; 让BIOS告诉我键盘的LED状态
 		MOV		AH,0x02
 		INT		0x16 			; keyboard BIOS
