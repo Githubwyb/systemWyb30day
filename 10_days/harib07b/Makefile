@@ -21,6 +21,7 @@ default :
 	$(MAKE) run
 
 # 最终生成的img文件
+#   将ipl10.bin的512B内容拷贝到磁盘的C0-H0-S1位置，用于启动扇区
 haribote.img : ipl10.bin haribote.sys
 	$(EDIMG)   imgin:$(TOOLPATH)/fdimg0at.tek \
 		wbinimg src:ipl10.bin len:512 from:0 to:0 \

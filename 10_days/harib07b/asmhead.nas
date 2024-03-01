@@ -63,7 +63,7 @@ pipelineflush:
 		MOV		SS,AX
 
 ; 转送bootpack
-		MOV		ESI,bootpack	; 源地址
+		MOV		ESI,bootpack	; 源地址，bootpack标签在此文件最后，也就是c语言编译的二进制放到了此文件后面
 		MOV		EDI,BOTPAK		; 目的地址
 		MOV		ECX,512*1024/4
 		CALL	memcpy

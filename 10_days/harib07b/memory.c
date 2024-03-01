@@ -1,6 +1,41 @@
 #include "bootpack.h"
 #include "naskfunc.h"
 
+#define EFLAGS_AC_BIT 0x00040000
+#define CR0_CACHE_DISABLE 0x60000000
+
+unsigned int memtest(unsigned int start, unsigned int end) {
+    char flg486 = 0;
+    unsigned int eflg, cr0, i;
+
+    /* 确认是386还是486以后 */
+    eflg = io_load_eflags();
+    eflg |= EFLAGS_AC_BIT; /* AC-bit = 1 */
+    io_store_eflags(eflg);
+    eflg = io_load_eflags();
+    if ((eflg & EFLAGS_AC_BIT) != 0) { /* 在386中，即使AC=1，也会自动返回0。 */
+        flg486 = 1;
+    }
+    eflg &= ~EFLAGS_AC_BIT; /* AC-bit = 0 */
+    io_store_eflags(eflg);
+
+    if (flg486 != 0) {
+        cr0 = load_cr0();
+        cr0 |= CR0_CACHE_DISABLE; /* 禁止缓存 */
+        store_cr0(cr0);
+    }
+
+    i = memtest_sub(start, end);
+
+    if (flg486 != 0) {
+        cr0 = load_cr0();
+        cr0 &= ~CR0_CACHE_DISABLE; /* 高速缓存许可 */
+        store_cr0(cr0);
+    }
+
+    return i;
+}
+
 void memman_init(struct MEMMAN *man) {
     man->frees = 0;
     man->maxfrees = 0;
@@ -96,47 +131,12 @@ int memman_free(struct MEMMAN *man, uint32_t addr, uint32_t size) {
     return -1;
 }
 
-#define EFLAGS_AC_BIT 0x00040000
-#define CR0_CACHE_DISABLE 0x60000000
-
-unsigned int memtest(unsigned int start, unsigned int end) {
-    char flg486 = 0;
-    unsigned int eflg, cr0, i;
-
-    /* 确认是386还是486以后 */
-    eflg = io_load_eflags();
-    eflg |= EFLAGS_AC_BIT; /* AC-bit = 1 */
-    io_store_eflags(eflg);
-    eflg = io_load_eflags();
-    if ((eflg & EFLAGS_AC_BIT) != 0) { /* 在386中，即使AC=1，也会自动返回0。 */
-        flg486 = 1;
-    }
-    eflg &= ~EFLAGS_AC_BIT; /* AC-bit = 0 */
-    io_store_eflags(eflg);
-
-    if (flg486 != 0) {
-        cr0 = load_cr0();
-        cr0 |= CR0_CACHE_DISABLE; /* 禁止缓存 */
-        store_cr0(cr0);
-    }
-
-    i = memtest_sub(start, end);
-
-    if (flg486 != 0) {
-        cr0 = load_cr0();
-        cr0 &= ~CR0_CACHE_DISABLE; /* 高速缓存许可 */
-        store_cr0(cr0);
-    }
-
-    return i;
-}
-
-uint32_t memman_alloc_4k(struct MEMMAN *man, uint32_t size) {
-    size = (size + 0xfff) & 0xfffff000;
+u32 memman_alloc_4k(struct MEMMAN *man, u32 size) {
+    size = (size + 0xfff) & ~0xfff;
     return memman_alloc(man, size);
 }
 
-int memman_free_4k(struct MEMMAN *man, uint32_t addr, uint32_t size) {
-    size = (size + 0xfff) & 0xfffff000;
+u32 memman_free_4k(struct MEMMAN *man, u32 addr, u32 size) {
+    size = (size + 0xfff) & ~0xfff;
     return memman_free(man, addr, size);
 }

@@ -4,12 +4,12 @@
 
 #include "naskfunc.h"
 
-#define ADR_IDT 0x0026f800       // IDT的内存位置
-#define LIMIT_IDT 0x000007ff     // IDT占用的字节数
-#define ADR_GDT 0x00270000       // GDT的内存位置
-#define LIMIT_GDT 0x0000ffff     // GDT占用的字节数
-#define ADR_BOTPAK 0x00280000    // bootpack.hrb所在的地址
-#define LIMIT_BOTPAK 0x0007f     // bootpack.hrb最大为 4k x 128 = 512k
+#define ADR_IDT 0x0026f800     // IDT的内存位置
+#define LIMIT_IDT 0x000007ff   // IDT占用的字节数
+#define ADR_GDT 0x00270000     // GDT的内存位置
+#define LIMIT_GDT 0x0000ffff   // GDT占用的字节数
+#define ADR_BOTPAK 0x00280000  // bootpack.hrb所在的地址
+#define LIMIT_BOTPAK 0x0007f   // bootpack.hrb最大为 4k x 128 = 512k
 
 // 全局gdt表
 static const struct gdt_page gdt_page = {.gdt = {

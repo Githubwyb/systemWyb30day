@@ -107,55 +107,46 @@ struct MEMMAN {
     int32_t losts;     // 释放失败的次数
     struct FREEINFO free[MEMMAN_FREES];
 };
-unsigned int memtest(unsigned int start, unsigned int end);
 /**
- * @brief 释放内存
+ * @brief 初始化内存结构体
+ *
+ * @param man
+ */
+void memman_init(struct MEMMAN *man);
+/**
+ * @brief 释放一块内存到内存管理器
  *
  * @param man
  * @param addr
  * @param size
- * @return int 成功返回0，失败返回-1
+ * @return int
  */
 int memman_free(struct MEMMAN *man, uint32_t addr, uint32_t size);
-void memman_init(struct MEMMAN *man);
-uint32_t memman_total(struct MEMMAN *man);
 /**
- * @brief 申请内存，按照4K对齐向上取整
+ * @brief 申请一块内存
  *
  * @param man
- * @param size 输入的size会按照4K向上取整
- * @return uint32_t 首地址
- */
-uint32_t memman_alloc_4k(struct MEMMAN *man, uint32_t size);
-/**
- * @brief 按照4K对齐释放内存
- *
- * @param man
- * @param addr
  * @param size
- * @return int 成功返回0，失败返回-1
+ * @return uint32_t
  */
-int memman_free_4k(struct MEMMAN *man, uint32_t addr, uint32_t size);
+uint32_t memman_alloc(struct MEMMAN *man, uint32_t size);
+/**
+ * @brief 计算内存大小
+ *
+ * @param start
+ * @param end
+ * @return unsigned int
+ */
+unsigned int memtest(unsigned int start, unsigned int end);
+/**
+ * @brief 获取剩余内存大小
+ *
+ * @param man
+ * @return uint32_t
+ */
+uint32_t memman_total(struct MEMMAN *man);
 
-/* sheet.c */
-#define MAX_SHEETS 256
-struct SHEET {
-    uint8_t *buf;
-    int32_t bxsize;
-    int32_t bysize;
-    int32_t vx0;
-    int32_t vy0;
-    int32_t col_inv;
-    int32_t height;
-    int32_t flags;
-};
-struct SHTCTL {
-    uint8_t *vram;
-    int32_t xsize;
-    int32_t ysize;
-    int32_t top;
-    struct SHEET *sheets[MAX_SHEETS];
-    struct SHEET sheets0[MAX_SHEETS];
-};
+u32 memman_alloc_4k(struct MEMMAN *man, u32 size);
+u32 memman_free_4k(struct MEMMAN *man, u32 addr, u32 size);
 
-#endif /* __BOOTPACK_H__ */
+#endif  // __BOOTPACK_H__
