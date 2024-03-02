@@ -1,28 +1,17 @@
-# 文件生成规则
+all: img
 
-ipl.bin : ipl.nas Makefile
-	../../z_tools/nask.exe ipl.nas ipl.bin ipl.lst
+boot:
+	nasm -w-zeroing -o bootloader ipl.S
 
-helloOS.img : ipl.bin Makefile
-	../../z_tools/edimg.exe imgin:../../z_tools/fdimg0at.tek \
-		wbinimg src:ipl.bin len:512 from:0 to:0 imgout:helloOS.img
-
-# 命令
-
-img :
-	../../z_tools/make.exe -r helloOS.img
-
-asm :
-	../../z_tools/make.exe -r ipl.bin
+# 生成img文件
+#   将ipl.S的512B内容写入到软盘镜像的C0-H0-S1的位置，用于启动扇区
+#   剩余需要将软盘扩容到2880个扇区，也就是1440KB
+img: boot
+	dd if=bootloader of=haribote.img count=1 bs=512
+	dd if=/dev/zero of=haribote.img bs=512 seek=1 skip=1 count=2879
 
 run :
-	../../z_tools/make.exe img
-	copy helloOS.img ../../common/helloOS.img
+	qemu-system-x86_64 -enable-kvm -m 4G -smp 1 -fda haribote.img
 
 clean :
-	-del ipl.bin
-	-del ipl.lst
-
-src_only :
-	../../z_tools/make.exe clean
-	-del helloOS.img
+	rm -f bootloader haribote.img
