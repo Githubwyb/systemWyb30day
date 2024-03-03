@@ -46,7 +46,7 @@ header: header.S
 
 # c语言起始函数为start_kernel
 cobjs: $(C_OBJS)
-	ld $(LDFLAGS) -N -e start_kernel -T kernel.ld -o $@.out $^
+	ld $(LDFLAGS) -N -e start_kernel -Ttext 0x00280000 -o $@.out $^
 	objdump -S -D $@.out >$@.asm
 	objcopy -S -O binary -j .text $@.out $@
 
