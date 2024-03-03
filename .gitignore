@@ -8,10 +8,13 @@
 *.map
 *.hrb
 *.gas
+*.o
+*.out
+*.d
 .vscode
-bootloader
+*.asm
+cobjs
+header
 
-*.nas
-!naskfunc.nas
-!ipl10.nas
-!asmhead.nas
+bootloader
+kernel

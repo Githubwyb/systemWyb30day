@@ -1,7 +1,0 @@
-; haribote-os
-; TAB=4
-
-		ORG		0xc200			; ?ò¢íˆèòç›?ó¢â¡?
-fin:
-		HLT
-		JMP		fin
