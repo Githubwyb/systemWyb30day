@@ -1,16 +1,12 @@
-#include "color.h"
+#include <linux/compiler_types.h>
 
-// 声明外部汇编函数
-extern void io_hlt(void);
-extern void io_cli(void);
-extern void io_out8(int port, int data);
-extern int  io_load_eflags(void);
-extern void io_store_eflags(int eflags);
+#include "asmfunc.h"
+#include "color.h"
 
 static void set_palette(int start, int end, unsigned char *rgb);
 
 void init_palette() {
-    static unsigned char table_rgb[256 * 3] = {
+    unsigned char table_rgb[] = {
         0xFF, 0xFF, 0xFF,  // 0: 白
         0xFF, 0xFF, 0xCC,  // 1:
         0xFF, 0xFF, 0x99,  // 2:
@@ -228,7 +224,7 @@ void init_palette() {
         0x00, 0x00, 0x33,  // 214:
         0x00, 0x00, 0x00   // 215: 黑
     };
-    set_palette(0, 255, table_rgb);
+    set_palette(0, sizeof(table_rgb) / 3 - 1, table_rgb);
 }
 
 void set_palette(int start, int end, unsigned char *rgb) {
@@ -246,16 +242,18 @@ void set_palette(int start, int end, unsigned char *rgb) {
 }
 
 void HariMain(void) {
-    int   i;
+    int i;
     char *p;
 
     init_palette();
-    p = (char *)0xa0000;
-    for (i = 0x00000; i < 0x0ffff; ++i) {
-        p[i] = i & 0xff;
-    }
 
-    for (;;) {
-        io_hlt();
-    }
+	p = (char *) 0xa0000;
+
+	for (i = 0; i <= 0xffff; i++) {
+		p[i] = i & 0x0f;
+	}
+
+	for (;;) {
+		io_hlt();
+	}
 }

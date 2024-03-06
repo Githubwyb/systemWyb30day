@@ -1,11 +1,5 @@
 #include "color.h"
-
-// 声明外部汇编函数
-extern void io_hlt(void);
-extern void io_cli(void);
-extern void io_out8(int port, int data);
-extern int  io_load_eflags(void);
-extern void io_store_eflags(int eflags);
+#include "asmfunc.h"
 
 static void set_palette(int start, int end, unsigned char *rgb);
 
@@ -35,7 +29,7 @@ void boxfill8(unsigned char *vram, int xsize, unsigned char c, int x0, int y0, i
 }
 
 void HariMain(void) {
-    char *vram  = (char *)0xa0000;
+    unsigned char *vram  = (u8 *)0xa0000;
     int   xsize = 320;
     int   ysize = 200;
 
