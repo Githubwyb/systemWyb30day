@@ -1,3 +1,4 @@
+TOOLPATH = ../../z_tools
 INCLUDE = -I$(TOOLPATH)/haribote/ -I./include/ -I./arch/x86/include/ -I./arch/x86/include/uapi/ -I.
 CFLAGS  = -Wall -Werror -Wno-int-to-pointer-cast -Wno-unused -Wno-array-bounds
 # -fno-pie 生成位置相关代码，位置无关代码暂时不清楚为什么会运行有问题，访问全局变量失败导致调色板设置有问题

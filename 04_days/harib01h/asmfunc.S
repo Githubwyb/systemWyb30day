@@ -10,16 +10,3 @@
 io_hlt:
     hlt
     ret
-
-# .global io_load_eflags
-# io_load_eflags:
-#     pushfd
-#     pop     %eax
-#     ret
-
-# .global io_store_eflags
-# io_store_eflags:
-#     mov     0x4(%esp),%eax
-#     push    %eax
-#     popfd
-#     ret

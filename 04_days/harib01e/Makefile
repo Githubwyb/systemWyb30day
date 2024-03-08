@@ -1,3 +1,4 @@
+TOOLPATH = ../../z_tools
 INCLUDE = -I$(TOOLPATH)/haribote/ -I./include/ -I./arch/x86/include/ -I./arch/x86/include/uapi/ -I.
 CFLAGS  = -nostdinc -fno-builtin -fno-omit-frame-pointer -fvisibility=hidden -D_SIZE_T -DCONFIG_X86_32 -MD -m32
 CFLAGS +=  -Wall -Werror -Wno-int-to-pointer-cast -Wno-unused

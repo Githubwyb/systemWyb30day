@@ -1,12 +1,6 @@
+#include "asmfunc.h"
 #include "color.h"
 #include "fonts.h"
-
-// 声明外部汇编函数
-extern void io_hlt(void);
-extern void io_cli(void);
-extern void io_out8(int port, int data);
-extern int io_load_eflags(void);
-extern void io_store_eflags(int eflags);
 
 static void set_palette(int start, int end, unsigned char *rgb);
 
@@ -39,10 +33,10 @@ struct BOOTINFO {
     char cyls, leds, vmode, reserve;
     short scrnx;
     short scrny;
-    char *vram;
+    u8 *vram;
 };
 
-static void init_screen(char *vram, int xsize, int ysize) {
+static void init_screen(u8 *vram, int xsize, int ysize) {
     boxfill8(vram, xsize, COL8_009999, 0, 0, xsize - 1, ysize - 29);
     boxfill8(vram, xsize, COL8_CCCCCC, 0, ysize - 28, xsize - 1, ysize - 28);
     boxfill8(vram, xsize, COL8_FFFFFF, 0, ysize - 27, xsize - 1, ysize - 27);
