@@ -1,4 +1,4 @@
-#include "naskfunc.h"
+#include "asmfunc.h"
 
 #define ADR_IDT 0x0026f800       // IDT的内存位置
 #define LIMIT_IDT 0x000007ff     // IDT占用的字节数

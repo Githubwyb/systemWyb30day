@@ -1,4 +1,4 @@
-#include "naskfunc.h"
+#include "asmfunc.h"
 
 #define ADR_IDT 0x0026f800       // IDT的内存位置
 #define LIMIT_IDT 0x000007ff     // IDT占用的字节数
@@ -8,7 +8,6 @@
 #define LIMIT_BOTPAK 0x0007ffff  // bootpack.hrb最大为512k
 #define AR_DATA32_RW 0x4092      // 数据段，可读写
 #define AR_CODE32_ER 0x409a      // 代码段，可读可执行，不可写
-#define AR_INTGATE32 0x008e      // 中断处理的属性
 
 // 根据cpu手册定义，可以参考 https://blog.csdn.net/m0_46125480/article/details/120381165
 struct SEGMENT_DESCRIPTOR {
@@ -71,11 +70,6 @@ void init_gdtidt(void) {
         set_gatedesc(idt + i, 0, 0, 0);
     }
     load_idtr(LIMIT_IDT, ADR_IDT);
-
-    // 注册中断处理函数
-    set_gatedesc(idt + 0x21, (int)asm_inthandler21, 2 * 8, AR_INTGATE32);
-    set_gatedesc(idt + 0x27, (int)asm_inthandler27, 2 * 8, AR_INTGATE32);
-    set_gatedesc(idt + 0x2c, (int)asm_inthandler2c, 2 * 8, AR_INTGATE32);
 
     return;
 }

@@ -1,15 +1,16 @@
-#include <stdio.h>
+#include <linux/compiler.h>
 
+#include "asmfunc.h"
 #include "color.h"
 #include "dsctbl.h"
+#include "fonts.h"
 #include "graphic.h"
-#include "naskfunc.h"
 
 struct BOOTINFO {
     char cyls, leds, vmode, reserve;
     short scrnx;
     short scrny;
-    char *vram;
+    u8 *vram;
 };
 
 void HariMain(void) {

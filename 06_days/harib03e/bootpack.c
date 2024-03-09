@@ -1,9 +1,9 @@
+#include <linux/compiler.h>
+
+#include "asmfunc.h"
 #include "bootpack.h"
-
-#include <stdio.h>
-
+#include "fonts.h"
 #include "graphic.h"
-#include "naskfunc.h"
 
 void HariMain(void) {
     struct BOOTINFO *binfo = (struct BOOTINFO *)ADR_BOOTINFO;

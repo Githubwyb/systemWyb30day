@@ -1,6 +1,8 @@
 #ifndef __GRAPHIC_H__
 #define __GRAPHIC_H__
 
+#include <linux/types.h>
+
 #define COL8_000000 215
 #define COL8_FF0000 35
 #define COL8_00FF00 185
@@ -19,20 +21,8 @@
 #define COL8_999999 158
 
 void init_palette();
-void init_mouse_cursor8(char *mouse, char bc);
-void init_screen(char *vram, int xsize, int ysize);
-void putblock8_8(char *vram, int vxsize, int pxsize, int pysize, int px0, int py0, char *buf, int bxsize);
-/**
- * @brief 显示器对一块矩形区域填充
- *
- * @param vram 显示内存起始地址
- * @param xsize 显示的宽度
- * @param c 颜色
- * @param x0
- * @param y0
- * @param x1
- * @param y1
- */
-void boxfill8(unsigned char *vram, int xsize, unsigned char c, int x0, int y0, int x1, int y1);
+void init_mouse_cursor8(u8 *mouse, u8 bc);
+void init_screen(u8 *vram, int xsize, int ysize);
+void putblock8_8(u8 *vram, int vxsize, int pxsize, int pysize, int px0, int py0, u8 *buf, int bxsize);
 
 #endif  // __GRAPHIC_H__

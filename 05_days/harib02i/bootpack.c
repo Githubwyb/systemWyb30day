@@ -1,16 +1,10 @@
-#include <stdio.h>
+#include <linux/compiler.h>
 
+#include <linux/kernel.h>
+
+#include "asmfunc.h"
 #include "color.h"
 #include "fonts.h"
-
-// 声明外部汇编函数
-extern void io_hlt();
-extern void io_cli();
-extern void io_out8(int port, int data);
-extern int io_load_eflags();
-extern void io_store_eflags(int eflags);
-void load_gdtr(int limit, int addr);
-void load_idtr(int limit, int addr);
 
 static void set_palette(int start, int end, unsigned char *rgb);
 
@@ -39,8 +33,8 @@ void boxfill8(unsigned char *vram, int xsize, unsigned char c, int x0, int y0, i
     }
 }
 
-void init_mouse_cursor8(char *mouse, char bc) {
-    static char cursor[16][16] = {
+void init_mouse_cursor8(u8 *mouse, char bc) {
+    static u8 cursor[16][16] = {
         "**************..",
         "*OOOOOOOOOOO*...",
         "*OOOOOOOOOO*....",
@@ -75,7 +69,7 @@ void init_mouse_cursor8(char *mouse, char bc) {
     }
 }
 
-void putblock8_8(char *vram, int vxsize, int pxsize, int pysize, int px0, int py0, char *buf, int bxsize) {
+void putblock8_8(u8 *vram, int vxsize, int pxsize, int pysize, int px0, int py0, u8 *buf, int bxsize) {
     int x, y;
     for (y = 0; y < pysize; y++) {
         for (x = 0; x < pxsize; x++) {
@@ -89,10 +83,10 @@ struct BOOTINFO {
     char cyls, leds, vmode, reserve;
     short scrnx;
     short scrny;
-    char *vram;
+    u8 *vram;
 };
 
-static void init_screen(char *vram, int xsize, int ysize) {
+static void init_screen(u8 *vram, int xsize, int ysize) {
     boxfill8(vram, xsize, COL8_009999, 0, 0, xsize - 1, ysize - 29);
     boxfill8(vram, xsize, COL8_CCCCCC, 0, ysize - 28, xsize - 1, ysize - 28);
     boxfill8(vram, xsize, COL8_FFFFFF, 0, ysize - 27, xsize - 1, ysize - 27);
@@ -110,11 +104,11 @@ static void init_screen(char *vram, int xsize, int ysize) {
     boxfill8(vram, xsize, COL8_FFFFFF, xsize - 47, ysize - 3, xsize - 4, ysize - 3);
     boxfill8(vram, xsize, COL8_FFFFFF, xsize - 3, ysize - 24, xsize - 3, ysize - 3);
 
-    char s[40];
+    char s[50];
     put_font8_str(vram, xsize, 8, 8, COL8_FFFFFF, "ABC 123");
     put_font8_str(vram, xsize, 31, 31, COL8_000000, "Hello OS.");
     put_font8_str(vram, xsize, 30, 30, COL8_FFFFFF, "Hello OS.");
-    sprintf(s, "scrnx = %d", xsize);
+    sprintf(s, "scrnx = %d", ysize);
     put_font8_str(vram, xsize, 8, 46, COL8_FFFFFF, s);
 }
 
@@ -130,27 +124,6 @@ struct GATE_DESCRIPTOR {
     short offset_high;
 };
 
-void init_gdtidt(void) {
-    struct SEGMENT_DESCRIPTOR *gdt = (struct SEGMENT_DESCRIPTOR *)0x00270000;
-    struct GATE_DESCRIPTOR *idt = (struct GATE_DESCRIPTOR *)0x0026f800;
-    int i;
-
-    // 初始化GDT
-    for (i = 0; i < 8192; i++) {
-        set_segmdesc(gdt + i, 0, 0, 0);
-    }
-    set_segmdesc(gdt + 1, 0xffffffff, 0x00000000, 0x4092);
-    set_segmdesc(gdt + 2, 0x0007ffff, 0x00280000, 0x409a);
-    load_gdtr(0xffff, 0x00270000);
-
-    // 初始化IDT
-    for (i = 0; i < 256; i++) {
-        set_gatedesc(idt + i, 0, 0, 0);
-    }
-    load_idtr(0x7ff, 0x0026f800);
-
-    return;
-}
 
 void set_segmdesc(struct SEGMENT_DESCRIPTOR *sd, unsigned int limit, int base, int ar) {
     if (limit > 0xfffff) {
@@ -172,6 +145,28 @@ void set_gatedesc(struct GATE_DESCRIPTOR *gd, int offset, int selector, int ar) 
     gd->dw_count = (ar >> 8) & 0xff;
     gd->access_right = ar & 0xff;
     gd->offset_high = (offset >> 16) & 0xffff;
+    return;
+}
+
+void init_gdtidt(void) {
+    struct SEGMENT_DESCRIPTOR *gdt = (struct SEGMENT_DESCRIPTOR *)0x00270000;
+    struct GATE_DESCRIPTOR *idt = (struct GATE_DESCRIPTOR *)0x0026f800;
+    int i;
+
+    // 初始化GDT
+    for (i = 0; i < 8192; i++) {
+        set_segmdesc(gdt + i, 0, 0, 0);
+    }
+    set_segmdesc(gdt + 1, 0xffffffff, 0x00000000, 0x4092);
+    set_segmdesc(gdt + 2, 0x0007ffff, 0x00280000, 0x409a);
+    load_gdtr(0xffff, 0x00270000);
+
+    // 初始化IDT
+    for (i = 0; i < 256; i++) {
+        set_gatedesc(idt + i, 0, 0, 0);
+    }
+    load_idtr(0x7ff, 0x0026f800);
+
     return;
 }
 

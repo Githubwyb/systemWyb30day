@@ -9,7 +9,7 @@ struct BOOTINFO {
     char reserve;
     short scrnx;    // 分辨率的x
     short scrny;    // 分辨率的y
-    char *vram;     // 图像缓冲区开始地址
+    u8 *vram;     // 图像缓冲区开始地址
 };
 #define ADR_BOOTINFO 0x00000ff0
 

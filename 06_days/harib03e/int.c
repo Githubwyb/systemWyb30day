@@ -1,7 +1,17 @@
-#include "bootpack.h"
-#include "fonts.h"
-#include "graphic.h"
-#include "naskfunc.h"
+#include "asmfunc.h"
+
+#define PIC0_ICW1 0x0020
+#define PIC0_OCW2 0x0020
+#define PIC0_IMR 0x0021
+#define PIC0_ICW2 0x0021
+#define PIC0_ICW3 0x0021
+#define PIC0_ICW4 0x0021
+#define PIC1_ICW1 0x00a0
+#define PIC1_OCW2 0x00a0
+#define PIC1_IMR 0x00a1
+#define PIC1_ICW2 0x00a1
+#define PIC1_ICW3 0x00a1
+#define PIC1_ICW4 0x00a1
 
 void init_pic() {
     io_out8(PIC0_IMR, 0xff);  // 禁止所有中断
@@ -19,45 +29,4 @@ void init_pic() {
 
     io_out8(PIC0_IMR, 0xfb);  // 11111011 PIC1以外全部禁止
     io_out8(PIC1_IMR, 0xff);  // 禁止所有中断
-}
-
-/**
- * @brief 处理PS/2键盘的中断
- *
- * @param esp
- */
-void inthandler21(int *esp) {
-    struct BOOTINFO *binfo = (struct BOOTINFO *)ADR_BOOTINFO;
-
-    boxfill8(binfo->vram, binfo->scrnx, COL8_000000, 0, 0, 32 * 8 - 1, 15);
-    put_font8_str(binfo->vram, binfo->scrnx, 0, 0, COL8_FFFFFF, "INT 21 (IRQ-1): PS/2 keyboard");
-    for (;;) {
-        io_hlt();
-    }
-}
-
-/**
- * @brief 处理PS/2鼠标的中断
- *
- * @param esp
- */
-void inthandler2c(int *esp) {
-    struct BOOTINFO *binfo = (struct BOOTINFO *)ADR_BOOTINFO;
-
-    boxfill8(binfo->vram, binfo->scrnx, COL8_000000, 0, 0, 32 * 8 - 1, 15);
-    put_font8_str(binfo->vram, binfo->scrnx, 0, 0, COL8_FFFFFF, "INT 2C (IRQ-12): PS/2 mouse");
-    for (;;) {
-        io_hlt();
-    }
-}
-
-/**
- * @brief 处理27中断，athlon64x2机等芯片组的原因，在PIC初始化时会发生一次中断
- *        此中断什么都不用做就好，一般是由于PIC初始化的电噪声引起的
- *
- * @param esp
- */
-void inthandler27(int *esp) {
-    io_out8(PIC0_OCW2, 0x67);  // 向PIC通知IRQ-07处理完成
-    return;
 }

@@ -1,4 +1,4 @@
-#include "naskfunc.h"
+#include "asmfunc.h"
 
 #define ADR_IDT 0x0026f800       // IDT的内存位置
 #define LIMIT_IDT 0x000007ff     // IDT占用的字节数
@@ -62,20 +62,22 @@ void init_gdtidt(void) {
     }
     // cpu管理的总内存
     set_segmdesc(gdt + 1, 0xffffffff, 0x00000000, AR_DATA32_RW);
-    // bootpack.hrb的段
-    set_segmdesc(gdt + 2, LIMIT_BOTPAK, ADR_BOTPAK, AR_CODE32_ER);
+    // 汇编的段
+    set_segmdesc(gdt + 2, 0x000fffff, 0x00000000, AR_CODE32_ER);
+    // c语言的段
+    set_segmdesc(gdt + 3, LIMIT_BOTPAK, ADR_BOTPAK, AR_CODE32_ER);
     load_gdtr(LIMIT_GDT, ADR_GDT);
 
     // 初始化IDT
     for (i = 0; i < LIMIT_IDT / sizeof(struct GATE_DESCRIPTOR); i++) {
         set_gatedesc(idt + i, 0, 0, 0);
     }
-    load_idtr(LIMIT_IDT, ADR_IDT);
 
     // 注册中断处理函数
-    set_gatedesc(idt + 0x21, (int)asm_inthandler21, 2 * 8, AR_INTGATE32);
-    set_gatedesc(idt + 0x27, (int)asm_inthandler27, 2 * 8, AR_INTGATE32);
-    set_gatedesc(idt + 0x2c, (int)asm_inthandler2c, 2 * 8, AR_INTGATE32);
+    set_gatedesc(idt + 0x21, (int)asm_inthandler21-0x280000, 3 * 8, AR_INTGATE32);
+    // set_gatedesc(idt + 0x27, (int)asm_inthandler27, 2 * 8, AR_INTGATE32);
+    // set_gatedesc(idt + 0x2c, (int)asm_inthandler2c, 2 * 8, AR_INTGATE32);
 
+    load_idtr(LIMIT_IDT, ADR_IDT);
     return;
 }

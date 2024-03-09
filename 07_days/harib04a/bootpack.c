@@ -1,9 +1,9 @@
+#include <linux/compiler.h>
+
+#include "asmfunc.h"
 #include "bootpack.h"
-
-#include <stdio.h>
-
+#include "fonts.h"
 #include "graphic.h"
-#include "naskfunc.h"
 
 void HariMain(void) {
     struct BOOTINFO *binfo = (struct BOOTINFO *)ADR_BOOTINFO;
@@ -22,8 +22,8 @@ void HariMain(void) {
     init_mouse_cursor8(mcursor, COL8_009999);
     putblock8_8(binfo->vram, binfo->scrnx, 16, 16, mx, my, mcursor, 16);
 
-    io_out8(PIC0_IMR, 0xf9); // 11111001 允许PIC1和键盘的中断
-    io_out8(PIC1_IMR, 0xef); // 11101111 允许鼠标的中断
+	io_out8(PIC0_IMR, 0xf9);
+	io_out8(PIC1_IMR, 0xef);
 
     for (;;) {
         io_hlt();

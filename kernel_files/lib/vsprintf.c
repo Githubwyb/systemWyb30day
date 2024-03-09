@@ -652,8 +652,8 @@ static char *string_nocheck(char *buf, char *end, const char *s,
 		char c = *s++;
 		if (!c)
 			break;
-		// if (buf < end)
-			// *buf = c;
+		if (buf < end)
+			*buf = c;
 		*buf = c;
 		++buf;
 		++len;
@@ -2796,48 +2796,6 @@ int vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
 			}
 		} else {
 			switch (spec.type) {
-			// case FORMAT_TYPE_NONE: {
-			// 	int copy = read;
-			// 	if (str < end) {
-			// 		if (copy > end - str)
-			// 			copy = end - str;
-			// 		memcpy(str, old_fmt, copy);
-			// 	}
-			// 	str += read;
-			// 	break;
-			// }
-
-			// case FORMAT_TYPE_WIDTH:
-			// 	set_field_width(&spec, va_arg(args, int));
-			// 	break;
-
-			// case FORMAT_TYPE_PRECISION:
-			// 	set_precision(&spec, va_arg(args, int));
-			// 	break;
-
-			// case FORMAT_TYPE_CHAR: {
-			// 	char c;
-
-			// 	if (!(spec.flags & LEFT)) {
-			// 		while (--spec.field_width > 0) {
-			// 			if (str < end)
-			// 				*str = ' ';
-			// 			++str;
-
-			// 		}
-			// 	}
-			// 	c = (unsigned char) va_arg(args, int);
-			// 	if (str < end)
-			// 		*str = c;
-			// 	++str;
-			// 	while (--spec.field_width > 0) {
-			// 		if (str < end)
-			// 			*str = ' ';
-			// 		++str;
-			// 	}
-			// 	break;
-			// }
-
 			case FORMAT_TYPE_STR:
 				str = string(str, end, va_arg(args, char *), spec);
 				break;
@@ -2886,30 +2844,6 @@ int vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
 					num = (signed char) va_arg(args, int);
 				} else {
 					switch (spec.type) {
-					// case FORMAT_TYPE_LONG_LONG:
-					// 	num = va_arg(args, long long);
-					// 	break;
-					// case FORMAT_TYPE_ULONG:
-					// 	num = va_arg(args, unsigned long);
-					// 	break;
-					// case FORMAT_TYPE_LONG:
-					// 	num = va_arg(args, long);
-					// 	break;
-					// case FORMAT_TYPE_SIZE_T:
-					// 	if (spec.flags & SIGN)
-					// 		num = va_arg(args, ssize_t);
-					// 	else
-					// 		num = va_arg(args, size_t);
-					// 	break;
-					// case FORMAT_TYPE_PTRDIFF:
-					// 	num = va_arg(args, ptrdiff_t);
-					// 	break;
-					// case FORMAT_TYPE_UBYTE:
-					// 	num = (unsigned char) va_arg(args, int);
-					// 	break;
-					// case FORMAT_TYPE_BYTE:
-					// 	num = (signed char) va_arg(args, int);
-					// 	break;
 					case FORMAT_TYPE_USHORT:
 						num = (unsigned short) va_arg(args, int);
 						break;
