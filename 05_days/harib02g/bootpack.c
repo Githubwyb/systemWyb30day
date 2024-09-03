@@ -62,7 +62,7 @@ static void init_screen(u8 *vram, int xsize, int ysize) {
     put_font8_str(vram, xsize, 8, 8, COL8_FFFFFF, "ABC 123");
     put_font8_str(vram, xsize, 31, 31, COL8_000000, "Hello OS.");
     put_font8_str(vram, xsize, 30, 30, COL8_FFFFFF, "Hello OS.");
-    sprintf(s, "scrnx = %d", ysize);
+    sprintf(s, "scrnx = %d", xsize);
     put_font8_str(vram, xsize, 8, 46, COL8_FFFFFF, s);
 }
 

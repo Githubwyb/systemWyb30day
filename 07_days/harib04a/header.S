@@ -73,7 +73,7 @@ seta20gate:
 	orl		$X86_CR0_PE,%eax	# PE设置为1切换到保护模式
 	movl	%eax,%cr0
 
-	# 按照32位的代码段跳转，将cpu设置到32位模式
+	# 汇编代码在第2个段，所以跳转使用第二个段加上偏移
 	ljmp	$(2*8), $protcseg
 
 msg:
@@ -98,7 +98,7 @@ over:
 	.code32		# 后面代码是32位代码段
 protcseg:
 	# Set up the protected-mode data segment registers
-	movw    $(1*8), %ax    # Our data segment selector
+	movw    $(1*8), %ax    			# Our data segment selector
 	movw    %ax, %ds                # -> DS: Data Segment
 	movw    %ax, %es                # -> ES: Extra Segment
 	movw    %ax, %fs                # -> FS
@@ -170,10 +170,10 @@ waitkbdout:
 #     u16 base2 : 8;      // 段的对应的内存实际地址high
 # } __attribute__((packed));
 # 第0个段是空的，全部是0
-# 第1个段是代码段，启动区所在位置，从0x00000000开始，0x9a代表可读可执行，内存上限为0x7ffff，g = 0代表字节为单位，512K
-# 	按照结构体和16位低位高位计算 0xffff, 0x0000, 0x9a00, 0x0047
-# 第2个段是数据段，cpu管理的总内存，从0x00000000开始，0x92代表可读可写，内存上限为0xfffff，g = 1代表4K为单位，4G
+# 第1个段是数据段，cpu管理的总内存，从0x00000000开始，0x92代表可读可写，内存上限为0xfffff，g = 1代表4K为单位，4G
 # 	按照结构体和16位低位高位计算 0xffff, 0x0000, 0x9200, 0x00cf
+# 第2个段是代码段，启动区所在位置，从0x00000000开始，0x9a代表可读可执行，内存上限为0x7ffff，g = 0代表字节为单位，512K
+# 	按照结构体和16位低位高位计算 0xffff, 0x0000, 0x9a00, 0x0047
 # 第3个段是代码段，c代码所在位置，从0x00280000开始，0x9a代表可读可执行，内存上限为0x7ffff，g = 0代表字节为单位，512K
 # 	按照结构体和16位低位高位计算 0xffff, 0x0000, 0x9a28, 0x0047
 .p2align	2	# 按照2^2 = 4字节对齐

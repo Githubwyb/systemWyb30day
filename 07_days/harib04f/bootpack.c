@@ -1,11 +1,11 @@
 #include "bootpack.h"
 
-#include <stdio.h>
-#include <string.h>
+#include <linux/compiler.h>
+#include <linux/kernel.h>
 
+#include "asmfunc.h"
 #include "fonts.h"
 #include "graphic.h"
-#include "naskfunc.h"
 
 #define PORT_KEYDAT 0x0060
 #define PORT_KEYSTA 0x0064

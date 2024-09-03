@@ -1,5 +1,5 @@
 # head.S bootloader下一步入口，存放于软盘中的二进制内核文件头部
-#include <asm/processor-flags.h>
+#include <uapi/asm/processor-flags.h>
 
 # boot_info结构体成员对应的地址，给c语言读取使用
 #define CYLS	 0x0ff0
@@ -14,9 +14,9 @@
 #define VRAM	 0x0ff8
 
 # 栈起始位置，共1MB。0x002fffff-0x003fffff
-#define STACK    0x003fffff
+#define STACK    	0x003fffff
 # C语言代码所在内存位置
-#define C_CODE	0x00280000
+#define C_CODE		0x00280000
 # 软盘数据所在内存位置
 #define	DISK_ADDR		0x00100000
 # 软盘数据所在内存位置（真实模式）
@@ -73,8 +73,8 @@ seta20gate:
 	orl		$X86_CR0_PE,%eax	# PE设置为1切换到保护模式
 	movl	%eax,%cr0
 
-	# 按照32位的代码段跳转，将cpu设置到32位模式
-	ljmp	$PROT_MODE_CSEG, $protcseg
+	# 汇编代码在第2个段，所以跳转使用第二个段加上偏移
+	ljmp	$(2*8), $protcseg
 
 msg:
   	.asciz "\n\nkernel is loading"
@@ -98,7 +98,7 @@ over:
 	.code32		# 后面代码是32位代码段
 protcseg:
 	# Set up the protected-mode data segment registers
-	movw    $PROT_MODE_DSEG, %ax    # Our data segment selector
+	movw    $(1*8), %ax    			# Our data segment selector
 	movw    %ax, %ds                # -> DS: Data Segment
 	movw    %ax, %es                # -> ES: Extra Segment
 	movw    %ax, %fs                # -> FS
@@ -111,14 +111,14 @@ protcseg:
 	movl	$start_kernel,%esi		# 源地址
 	movl	$C_CODE,%edi			# 目的地址
 	movl	$(512*1024/4),%ecx		# 拷贝512K，注意后面的C语言编译超过512K就要修改这里
-	call	memcpy
+	call	asmmemcpy
 
 	# 拷贝软盘数据到内存对应位置
 	# 拷贝启动扇区
 	movl	$0x00007c00,%esi		# 源地址
 	movl	$DISK_ADDR,%edi			# 目的地址
 	movl	$(512/4),%ecx			# 拷贝512B
-	call	memcpy
+	call	asmmemcpy
 	# 拷贝剩余数据
 	movl	$(DISK_ADDR_REAL+512),%esi		# 源地址
 	movl	$(DISK_ADDR+512),%edi			# 目的地址
@@ -126,7 +126,7 @@ protcseg:
 	# 将ecx乘上512*8*2/4，cyls是bootloader读取的软盘中柱面数，一个柱面18个磁道，一个磁道2个扇区，一个扇区512B
 	imul	$(512*18*2/4),%ecx
 	subl	$(512/4),%ecx					# 去除启动扇区
-	call	memcpy
+	call	asmmemcpy
 
 	# 调用c语言第一个指令，位置是第3个段的首地址
 	ljmp	$(3*8),$0x0000
@@ -138,13 +138,13 @@ hlt_cpu:
 	hlt
 	jmp hlt_cpu
 
-memcpy:
+asmmemcpy:
 	movl		(%esi),%eax		# 把esi寄存器存储的地址对应的值赋值给eax
 	addl		$4,%esi			# 将esi存储的地址加4
 	movl		%eax,(%edi)		# 将eax寄存器内存储的值赋值给edi存储的地址指向的位置
 	addl		$4,%edi			# 将edi存储的地址加4
 	subl		$1,%ecx 		# 将ECX减1，剩余拷贝4字节数
-	jnz			memcpy			# jump not zero 减法结果不为0就跳转memcpy
+	jnz			asmmemcpy		# jump not zero 减法结果不为0就跳转asmmemcpy
 	ret
 
 waitkbdout:
@@ -170,17 +170,17 @@ waitkbdout:
 #     u16 base2 : 8;      // 段的对应的内存实际地址high
 # } __attribute__((packed));
 # 第0个段是空的，全部是0
-# 第1个段是代码段，启动区所在位置，从0x00000000开始，0x9a代表可读可执行，内存上限为0x7ffff，g = 0代表字节为单位，512K
-# 	按照结构体和16位低位高位计算 0xffff, 0x0000, 0x9a00, 0x0047
-# 第2个段是数据段，cpu管理的总内存，从0x00000000开始，0x92代表可读可写，内存上限为0xfffff，g = 1代表4K为单位，4G
+# 第1个段是数据段，cpu管理的总内存，从0x00000000开始，0x92代表可读可写，内存上限为0xfffff，g = 1代表4K为单位，4G
 # 	按照结构体和16位低位高位计算 0xffff, 0x0000, 0x9200, 0x00cf
+# 第2个段是代码段，启动区所在位置，从0x00000000开始，0x9a代表可读可执行，内存上限为0x7ffff，g = 0代表字节为单位，512K
+# 	按照结构体和16位低位高位计算 0xffff, 0x0000, 0x9a00, 0x0047
 # 第3个段是代码段，c代码所在位置，从0x00280000开始，0x9a代表可读可执行，内存上限为0x7ffff，g = 0代表字节为单位，512K
 # 	按照结构体和16位低位高位计算 0xffff, 0x0000, 0x9a28, 0x0047
 .p2align	2	# 按照2^2 = 4字节对齐
 gdt:
 	.word	0x0000,0x0000,0x0000,0x0000		# null seg
-	.word	0xffff,0x0000,0x9a00,0x0047		# 汇编代码所在内存位置
 	.word	0xffff,0x0000,0x9200,0x00cf		# 可读写的段，数据段
+	.word	0xffff,0x0000,0x9a00,0x0047		# 汇编代码所在内存位置
 	.word	0xffff,0x0000,0x9a28,0x0047		# 给c代码使用的段
 
 gdtdesc:

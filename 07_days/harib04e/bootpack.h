@@ -1,8 +1,8 @@
 #ifndef __BOOTPACK_H__
 #define __BOOTPACK_H__
 
+#include <linux/types.h>
 #include <linux/kfifo.h>
-#include <stddef.h>
 
 // boot相关信息，内存地址 0x0ff0-0x0fff
 struct BOOTINFO {
@@ -12,7 +12,7 @@ struct BOOTINFO {
     char reserve;
     short scrnx;  // 分辨率的x
     short scrny;  // 分辨率的y
-    char *vram;   // 图像缓冲区开始地址
+    u8 *vram;     // 图像缓冲区开始地址
 };
 #define ADR_BOOTINFO 0x00000ff0
 
@@ -38,6 +38,6 @@ extern KeyBufType g_keybuf;
 #define PIC1_ICW3 0x00a1
 #define PIC1_ICW4 0x00a1
 
-    void init_pic();
+void init_pic();
 
 #endif  // __BOOTPACK_H__

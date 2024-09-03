@@ -629,15 +629,15 @@ char *widen_string(char *buf, int n, char *end, struct printf_spec spec)
 		return buf;
 	/* we want to pad the sucker */
 	spaces = spec.field_width - n;
-	if (!(spec.flags & LEFT)) {
-		move_right(buf - n, end, n, spaces);
-		return buf + spaces;
-	}
-	while (spaces--) {
-		if (buf < end)
-			*buf = ' ';
-		++buf;
-	}
+	// if (!(spec.flags & LEFT)) {
+	// 	move_right(buf - n, end, n, spaces);
+	// 	return buf + spaces;
+	// }
+	// while (spaces--) {
+	// 	if (buf < end)
+	// 		*buf = ' ';
+	// 	++buf;
+	// }
 	return buf;
 }
 
@@ -647,14 +647,16 @@ static char *string_nocheck(char *buf, char *end, const char *s,
 {
 	int len = 0;
 	int lim = spec.precision;
+	// *buf = '1';
+	// return buf+1;
 
-	while (lim--) {
+	// while (lim--) {
+	while (1) {
 		char c = *s++;
 		if (!c)
 			break;
-		if (buf < end)
+		// if (buf < end)
 			*buf = c;
-		*buf = c;
 		++buf;
 		++len;
 	}

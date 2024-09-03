@@ -74,7 +74,7 @@ void init_gdtidt(void) {
     }
 
     // 注册中断处理函数
-    set_gatedesc(idt + 0x21, (int)asm_inthandler21-0x280000, 3 * 8, AR_INTGATE32);
+    set_gatedesc(idt + 0x21, (int)asm_inthandler21-ADR_BOTPAK, 3 * 8, AR_INTGATE32);
     // set_gatedesc(idt + 0x27, (int)asm_inthandler27, 2 * 8, AR_INTGATE32);
     // set_gatedesc(idt + 0x2c, (int)asm_inthandler2c, 2 * 8, AR_INTGATE32);
 

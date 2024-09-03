@@ -1,11 +1,9 @@
-#include <linux/kfifo.h>
-#include <stddef.h>
-#include <stdio.h>
+#include <linux/kernel.h>
 
+#include "asmfunc.h"
 #include "bootpack.h"
 #include "fonts.h"
 #include "graphic.h"
-#include "naskfunc.h"
 
 void init_pic() {
     io_out8(PIC0_IMR, 0xff);  // 禁止所有中断

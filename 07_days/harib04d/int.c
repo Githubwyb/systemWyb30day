@@ -1,9 +1,9 @@
-#include <stdio.h>
+#include <linux/kernel.h>
 
+#include "asmfunc.h"
 #include "bootpack.h"
 #include "fonts.h"
 #include "graphic.h"
-#include "naskfunc.h"
 
 void init_pic() {
     io_out8(PIC0_IMR, 0xff);  // 禁止所有中断
@@ -38,7 +38,7 @@ void inthandler21(int *esp) {
     if (g_keybuf.len < 32) {
         g_keybuf.data[g_keybuf.next_w] = data;
         g_keybuf.len++;
-        g_keybuf.next_w = g_keybuf.next_w == 32 ? 0 : g_keybuf.next_w + 1;
+        g_keybuf.next_w = g_keybuf.next_w == 31 ? 0 : g_keybuf.next_w + 1;
     }
 }
 

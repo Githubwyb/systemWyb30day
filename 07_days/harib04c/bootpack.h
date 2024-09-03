@@ -1,15 +1,17 @@
 #ifndef __BOOTPACK_H__
 #define __BOOTPACK_H__
 
+#include <linux/types.h>
+
 // boot相关信息，内存地址 0x0ff0-0x0fff
 struct BOOTINFO {
     char cyls;
     char leds;
-    char vmode;     // 颜色数目的信息，颜色的位数
+    char vmode;  // 颜色数目的信息，颜色的位数
     char reserve;
-    short scrnx;    // 分辨率的x
-    short scrny;    // 分辨率的y
-    char *vram;     // 图像缓冲区开始地址
+    short scrnx;  // 分辨率的x
+    short scrny;  // 分辨率的y
+    u8 *vram;     // 图像缓冲区开始地址
 };
 #define ADR_BOOTINFO 0x00000ff0
 
