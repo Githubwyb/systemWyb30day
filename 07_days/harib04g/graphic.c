@@ -1,8 +1,8 @@
 #include "graphic.h"
 
-#include <stdio.h>
+#include <linux/kernel.h>
 
-#include "naskfunc.h"
+#include "asmfunc.h"
 
 static unsigned char table_rgb[256 * 3] = {
     0xFF, 0xFF, 0xFF,  // 0: 白
@@ -248,8 +248,8 @@ void boxfill8(unsigned char *vram, int xsize, unsigned char c, int x0, int y0, i
     }
 }
 
-void init_mouse_cursor8(char *mouse, char bc) {
-    static char cursor[16][16] = {
+void init_mouse_cursor8(u8 *mouse, u8 bc) {
+    static u8 cursor[16][16] = {
         "**************..",
         "*OOOOOOOOOOO*...",
         "*OOOOOOOOOO*....",
@@ -284,7 +284,7 @@ void init_mouse_cursor8(char *mouse, char bc) {
     }
 }
 
-void putblock8_8(char *vram, int vxsize, int pxsize, int pysize, int px0, int py0, char *buf, int bxsize) {
+void putblock8_8(u8 *vram, int vxsize, int pxsize, int pysize, int px0, int py0, u8 *buf, int bxsize) {
     int x, y;
     for (y = 0; y < pysize; y++) {
         for (x = 0; x < pxsize; x++) {
@@ -294,7 +294,7 @@ void putblock8_8(char *vram, int vxsize, int pxsize, int pysize, int px0, int py
     return;
 }
 
-void init_screen(char *vram, int xsize, int ysize) {
+void init_screen(u8 *vram, int xsize, int ysize) {
     boxfill8(vram, xsize, COL8_009999, 0, 0, xsize - 1, ysize - 29);
     boxfill8(vram, xsize, COL8_CCCCCC, 0, ysize - 28, xsize - 1, ysize - 28);
     boxfill8(vram, xsize, COL8_FFFFFF, 0, ysize - 27, xsize - 1, ysize - 27);

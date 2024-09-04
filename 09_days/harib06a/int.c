@@ -1,10 +1,9 @@
-#include <linux/kfifo.h>
-#include <stddef.h>
-#include <stdio.h>
+#include <linux/kernel.h>
 
+#include "asmfunc.h"
 #include "bootpack.h"
+#include "fonts.h"
 #include "graphic.h"
-#include "naskfunc.h"
 
 void init_pic() {
     io_out8(PIC0_IMR, 0xff);  // 禁止所有中断
@@ -22,6 +21,49 @@ void init_pic() {
 
     io_out8(PIC0_IMR, 0xfb);  // 11111011 PIC1以外全部禁止
     io_out8(PIC1_IMR, 0xff);  // 禁止所有中断
+}
+
+#define PORT_KEYDAT 0x0060
+
+KeyBufType g_keybuf = (typeof(g_keybuf)){{{
+    .in = 0,
+    .out = 0,
+    .mask = __is_kfifo_ptr(&(g_keybuf)) ? 0 : ARRAY_SIZE((g_keybuf).buf) - 1,
+    .esize = sizeof(*(g_keybuf).buf),
+    .data = __is_kfifo_ptr(&(g_keybuf)) ? NULL : (g_keybuf).buf,
+}}};
+
+MouseBufType g_mouseBuf = (typeof(g_mouseBuf)){{{
+    .in = 0,
+    .out = 0,
+    .mask = __is_kfifo_ptr(&(g_mouseBuf)) ? 0 : ARRAY_SIZE((g_mouseBuf).buf) - 1,
+    .esize = sizeof(*(g_mouseBuf).buf),
+    .data = __is_kfifo_ptr(&(g_mouseBuf)) ? NULL : (g_mouseBuf).buf,
+}}};
+
+/**
+ * @brief 处理PS/2键盘的中断
+ *
+ * @param esp
+ */
+void inthandler21(int *esp) {
+    io_out8(PIC0_OCW2, 0x61);  // 通知PIC的IRQ_01已经处理完毕
+
+    unsigned char data = io_in8(PORT_KEYDAT);  // 读取键盘输入的值
+    kfifo_put(&g_keybuf, data);
+}
+
+/**
+ * @brief 处理PS/2鼠标的中断
+ *
+ * @param esp
+ */
+void inthandler2c(int *esp) {
+    io_out8(PIC1_OCW2, 0x64);  // 通知PIC1，IRQ-12处理完成
+    io_out8(PIC0_OCW2, 0x62);  // 通知PIC0，IRQ-02处理完成
+
+    unsigned char data = io_in8(PORT_KEYDAT);
+    kfifo_put(&g_mouseBuf, data);
 }
 
 /**

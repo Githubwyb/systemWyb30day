@@ -4,10 +4,10 @@
 #define LIMIT_IDT 0x000007ff     // IDT占用的字节数
 #define ADR_GDT 0x00270000       // GDT的内存位置
 #define LIMIT_GDT 0x0000ffff     // GDT占用的字节数
-#define ADR_BOTPAK 0x00280000    // bootpack.hrb所在的地址
-#define LIMIT_BOTPAK 0x0007ffff  // bootpack.hrb最大为512k
-#define AR_DATA32_RW 0x4092      // 数据段，可读写
-#define AR_CODE32_ER 0x409a      // 代码段，可读可执行，不可写
+#define ADR_BOTPAK 0x00280000    // kernel所在的地址
+#define LIMIT_BOTPAK 0x0000007f  // kernel最大为4K x 128 = 512KB
+#define AR_DATA32_RW 0xc092      // 数据段，可读写，单位4K
+#define AR_CODE32_ER 0xc09a      // 代码段，可读可执行，不可写，单位4K
 #define AR_INTGATE32 0x008e      // 中断处理的属性
 
 // 根据cpu手册定义，可以参考 https://blog.csdn.net/m0_46125480/article/details/120381165
@@ -62,9 +62,7 @@ void init_gdtidt(void) {
     }
     // cpu管理的总内存
     set_segmdesc(gdt + 1, 0xffffffff, 0x00000000, AR_DATA32_RW);
-    // 汇编的段
-    set_segmdesc(gdt + 2, 0x000fffff, 0x00000000, AR_CODE32_ER);
-    // c语言的段
+    // c语言的段，C语言只能使用第3个段，使用第4个或第2个都会在中断里面崩溃，不知道为什么
     set_segmdesc(gdt + 3, LIMIT_BOTPAK, ADR_BOTPAK, AR_CODE32_ER);
     load_gdtr(LIMIT_GDT, ADR_GDT);
 
@@ -75,8 +73,8 @@ void init_gdtidt(void) {
 
     // 注册中断处理函数
     set_gatedesc(idt + 0x21, (int)asm_inthandler21-ADR_BOTPAK, 3 * 8, AR_INTGATE32);
-    // set_gatedesc(idt + 0x27, (int)asm_inthandler27, 2 * 8, AR_INTGATE32);
-    // set_gatedesc(idt + 0x2c, (int)asm_inthandler2c, 2 * 8, AR_INTGATE32);
+    // set_gatedesc(idt + 0x27, (int)asm_inthandler27, 3 * 8, AR_INTGATE32);
+    // set_gatedesc(idt + 0x2c, (int)asm_inthandler2c, 3 * 8, AR_INTGATE32);
 
     load_idtr(LIMIT_IDT, ADR_IDT);
     return;

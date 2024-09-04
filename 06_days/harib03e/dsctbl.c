@@ -5,9 +5,9 @@
 #define ADR_GDT 0x00270000       // GDT的内存位置
 #define LIMIT_GDT 0x0000ffff     // GDT占用的字节数
 #define ADR_BOTPAK 0x00280000    // bootpack.hrb所在的地址
-#define LIMIT_BOTPAK 0x0007ffff  // bootpack.hrb最大为512k
-#define AR_DATA32_RW 0x4092      // 数据段，可读写
-#define AR_CODE32_ER 0x409a      // 代码段，可读可执行，不可写
+#define LIMIT_BOTPAK 0x0000007f  // bootpack.hrb最大为4K x 128 = 512KB
+#define AR_DATA32_RW 0xc092      // 数据段，可读写，单位4K
+#define AR_CODE32_ER 0xc09a      // 代码段，可读可执行，不可写，单位4K
 
 // 根据cpu手册定义，可以参考 https://blog.csdn.net/m0_46125480/article/details/120381165
 struct SEGMENT_DESCRIPTOR {
@@ -61,7 +61,7 @@ void init_gdtidt(void) {
     }
     // cpu管理的总内存
     set_segmdesc(gdt + 1, 0xffffffff, 0x00000000, AR_DATA32_RW);
-    // bootpack.hrb的段
+    // c语言的段
     set_segmdesc(gdt + 2, LIMIT_BOTPAK, ADR_BOTPAK, AR_CODE32_ER);
     load_gdtr(LIMIT_GDT, ADR_GDT);
 

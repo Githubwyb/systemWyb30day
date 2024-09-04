@@ -1,9 +1,8 @@
 #ifndef __BOOTPACK_H__
 #define __BOOTPACK_H__
 
-#include <linux/kfifo.h>
 #include <linux/types.h>
-#include <stddef.h>
+#include <linux/kfifo.h>
 
 // boot相关信息，内存地址 0x0ff0-0x0fff
 struct BOOTINFO {

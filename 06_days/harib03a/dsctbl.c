@@ -51,7 +51,7 @@ void init_gdtidt(void) {
         set_segmdesc(gdt + i, 0, 0, 0);
     }
     set_segmdesc(gdt + 1, 0xffffffff, 0x00000000, 0x4092);
-    set_segmdesc(gdt + 2, 0x0007ffff, 0x00280000, 0x409a);
+    set_segmdesc(gdt + 2, 0x0000007f, 0x00280000, 0xc09a);
     load_gdtr(0xffff, 0x00270000);
 
     // 初始化IDT

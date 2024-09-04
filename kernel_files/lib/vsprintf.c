@@ -61,7 +61,8 @@
 #define PAGE_SHIFT		12
 #define PAGE_SIZE		(_AC(1,UL) << PAGE_SHIFT)
 #define PAGE_MASK		(~(PAGE_SIZE-1))
-// end TODO
+extern void debug_print(const char *s);
+// TODO end
 
 /* Disable pointer hashing if requested */
 bool no_hash_pointers __ro_after_init;
@@ -2668,9 +2669,9 @@ qualifier:
 		}
 	}
 
-	if (qualifier == 'L')
+	if (qualifier == 'L') {
 		spec->type = FORMAT_TYPE_LONG_LONG;
-	else if (qualifier == 'l') {
+	} else if (qualifier == 'l') {
 		BUILD_BUG_ON(FORMAT_TYPE_ULONG + SIGN != FORMAT_TYPE_LONG);
 		spec->type = FORMAT_TYPE_ULONG + (spec->flags & SIGN);
 	} else if (qualifier == 'z') {
@@ -2827,36 +2828,43 @@ int vsnprintf(char *buf, size_t size, const char *fmt, va_list args)
 				goto out;
 
 			default:
-				if (spec.type == FORMAT_TYPE_LONG_LONG) {
+				switch (spec.type) {
+				case FORMAT_TYPE_LONG_LONG:
 					num = va_arg(args, long long);
-				} else if (FORMAT_TYPE_ULONG) {
+					break;
+				case FORMAT_TYPE_ULONG:
 					num = va_arg(args, unsigned long);
-				} else if (FORMAT_TYPE_LONG) {
+					break;
+				case FORMAT_TYPE_LONG:
 					num = va_arg(args, long);
-				} else if (FORMAT_TYPE_SIZE_T) {
+					break;
+				case FORMAT_TYPE_SIZE_T:
 					if (spec.flags & SIGN)
 						num = va_arg(args, ssize_t);
 					else
 						num = va_arg(args, size_t);
-				} else if (FORMAT_TYPE_PTRDIFF) {
-					num = va_arg(args, ptrdiff_t);
-				} else if (FORMAT_TYPE_UBYTE) {
-					num = (unsigned char) va_arg(args, int);
-				} else if (FORMAT_TYPE_BYTE) {
-					num = (signed char) va_arg(args, int);
-				} else {
-					switch (spec.type) {
-					case FORMAT_TYPE_USHORT:
-						num = (unsigned short) va_arg(args, int);
-						break;
-					case FORMAT_TYPE_SHORT:
-						num = (short) va_arg(args, int);
-						break;
-					case FORMAT_TYPE_INT:
-						num = (int) va_arg(args, int);
-						break;
-					default:
-						num = va_arg(args, unsigned int);
+					break;
+				default:
+					if (spec.type == FORMAT_TYPE_PTRDIFF) {
+						num = va_arg(args, ptrdiff_t);
+					} else if (spec.type == FORMAT_TYPE_UBYTE) {
+						num = (unsigned char) va_arg(args, int);
+					} else if (spec.type == FORMAT_TYPE_BYTE) {
+						num = (signed char) va_arg(args, int);
+					} else {
+						switch (spec.type) {
+						case FORMAT_TYPE_USHORT:
+							num = (unsigned short) va_arg(args, int);
+							break;
+						case FORMAT_TYPE_SHORT:
+							num = (short) va_arg(args, int);
+							break;
+						case FORMAT_TYPE_INT:
+							num = (int) va_arg(args, int);
+							break;
+						default:
+							num = va_arg(args, unsigned int);
+						}
 					}
 				}
 

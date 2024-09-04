@@ -12,7 +12,7 @@
 #define PORT_KEYCMD 0x0064
 #define KEYSTA_SEND_NOTREADY 0x02
 #define KEYCMD_WRITE_MODE 0x60
-#define KBC_MODE 0x47
+#define KBC_MODE 0x47  // 鼠标模式
 
 /**
  * @brief 等待键盘控制器可以发送数据
@@ -34,6 +34,7 @@ void init_keyboard() {
     wait_KBC_sendready();
     io_out8(PORT_KEYCMD, KEYCMD_WRITE_MODE);
     wait_KBC_sendready();
+    // 设置模式使用鼠标
     io_out8(PORT_KEYDAT, KBC_MODE);
     return;
 }
@@ -73,6 +74,7 @@ void HariMain(void) {
     io_out8(PIC0_IMR, 0xf9);  // 11111001 允许PIC1和键盘的中断
     io_out8(PIC1_IMR, 0xef);  // 11101111 允许鼠标的中断
 
+    init_keyboard();
     enable_mouse();
 
     for (;;) {

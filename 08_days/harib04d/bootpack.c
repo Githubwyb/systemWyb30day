@@ -1,20 +1,18 @@
 #include "bootpack.h"
 
-#include <linux/stddef.h>
-#include <linux/types.h>
-#include <stdio.h>
-#include <string.h>
+#include <linux/compiler.h>
+#include <linux/kernel.h>
 
+#include "asmfunc.h"
 #include "fonts.h"
 #include "graphic.h"
-#include "naskfunc.h"
 
 #define PORT_KEYDAT 0x0060
 #define PORT_KEYSTA 0x0064
 #define PORT_KEYCMD 0x0064
 #define KEYSTA_SEND_NOTREADY 0x02
 #define KEYCMD_WRITE_MODE 0x60
-#define KBC_MODE 0x47
+#define KBC_MODE 0x47  // 鼠标模式
 
 /**
  * @brief 等待键盘控制器可以发送数据
@@ -36,6 +34,7 @@ void init_keyboard() {
     wait_KBC_sendready();
     io_out8(PORT_KEYCMD, KEYCMD_WRITE_MODE);
     wait_KBC_sendready();
+    // 设置模式使用鼠标
     io_out8(PORT_KEYDAT, KBC_MODE);
     return;
 }
@@ -132,6 +131,7 @@ void HariMain(void) {
     io_out8(PIC0_IMR, 0xf9);  // 11111001 允许PIC1和键盘的中断
     io_out8(PIC1_IMR, 0xef);  // 11101111 允许鼠标的中断
 
+    init_keyboard();
     enable_mouse();
     mdec.phase = 0;
 
@@ -141,7 +141,7 @@ void HariMain(void) {
             io_stihlt();
         } else {
             unsigned char i;
-            char s[4];
+            char s[20];
             if (!kfifo_is_empty(&g_keybuf)) {
                 kfifo_get(&g_keybuf, &i);
                 io_sti();
@@ -168,7 +168,7 @@ void HariMain(void) {
                     s[2] = 'C';
                 }
                 // 打印鼠标数据
-                boxfill8(binfo->vram, binfo->scrnx, COL8_009999, 32, 16, 32 + 15 * 8 - 1, 31);
+                boxfill8(binfo->vram, binfo->scrnx, COL8_009999, 32, 16, 32 + 20 * 8 - 1, 31);
                 put_font8_str(binfo->vram, binfo->scrnx, 32, 16, COL8_FFFFFF, s);
 
                 // 移动光标
@@ -197,4 +197,11 @@ void HariMain(void) {
             }
         }
     }
+}
+
+void debug_print(const char *s) {
+    struct BOOTINFO *binfo = (struct BOOTINFO *)ADR_BOOTINFO;
+    // 320 x 200
+    boxfill8(binfo->vram, binfo->scrnx, COL8_000000, 0, 100, 200, 150);
+    put_font8_str(binfo->vram, binfo->scrnx, 0, 100, COL8_FFFFFF, s);
 }
