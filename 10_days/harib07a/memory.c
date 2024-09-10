@@ -1,5 +1,5 @@
 #include "bootpack.h"
-#include "naskfunc.h"
+#include "asmfunc.h"
 
 void memman_init(struct MEMMAN *man) {
     man->frees = 0;
@@ -45,7 +45,7 @@ uint32_t memman_alloc(struct MEMMAN *man, uint32_t size) {
 }
 
 int memman_free(struct MEMMAN *man, uint32_t addr, uint32_t size) {
-    int32_t i;
+    int32_t i;  // 要存入内存的idx
     int32_t j;
     // 为了便于归纳内存，将free[]按照addr的顺序排列
     // 先决定放哪里
@@ -79,7 +79,7 @@ int memman_free(struct MEMMAN *man, uint32_t addr, uint32_t size) {
     // 既不能和前面归纳到一起，也不能和后面归纳到一起，新建一个info
     if (man->frees < MEMMAN_FREES) {
         // 腾个位置
-        for (j = man->frees; i > i; --j) {
+        for (j = man->frees; j > i; --j) {
             man->free[j] = man->free[j - 1];
         }
         ++man->frees;
@@ -99,22 +99,44 @@ int memman_free(struct MEMMAN *man, uint32_t addr, uint32_t size) {
 #define EFLAGS_AC_BIT 0x00040000
 #define CR0_CACHE_DISABLE 0x60000000
 
+static unsigned int memtest_sub(unsigned int start, unsigned int end) {
+    unsigned int i, old, pat0 = 0xaa55aa55, pat1 = 0x55aa55aa;
+    volatile unsigned int *p;  // 这里加上volatile，防止编译器优化
+    // unsigned int *p = 0;
+    for (i = start; i <= end; i += 0x1000) {
+        p = (unsigned int *)(i + 0xffc);
+        old = *p;         /* 记录以前的值 */
+        *p = pat0;        /* 尝试写 */
+        *p ^= 0xffffffff; /* 反转 */
+        if (*p != pat1) { /* 检查反转结果 */
+        not_memory:
+            *p = old;
+            break;
+        }
+        *p ^= 0xffffffff; /* 再次反转 */
+        if (*p != pat0) { /* 检查反转结果 */
+            goto not_memory;
+        }
+        *p = old; /* 恢复原来的值 */
+    }
+    return i;
+}
+
 unsigned int memtest(unsigned int start, unsigned int end) {
-    char flg486 = 0;
+    bool before_386;
     unsigned int eflg, cr0, i;
 
-    /* 确认是386还是486以后 */
+    // 386及之前的cpu，没有AC这个标记位，所以设置之后还是返回0，使用此方式判断是否为386及以前
     eflg = io_load_eflags();
-    eflg |= EFLAGS_AC_BIT; /* AC-bit = 1 */
+    eflg |= EFLAGS_AC_BIT;
     io_store_eflags(eflg);
     eflg = io_load_eflags();
-    if ((eflg & EFLAGS_AC_BIT) != 0) { /* 在386中，即使AC=1，也会自动返回0。 */
-        flg486 = 1;
-    }
-    eflg &= ~EFLAGS_AC_BIT; /* AC-bit = 0 */
+    before_386 = (eflg & EFLAGS_AC_BIT) == 0;
+    // 还原AC标记位
+    eflg &= ~EFLAGS_AC_BIT;
     io_store_eflags(eflg);
 
-    if (flg486 != 0) {
+    if (!before_386) {
         cr0 = load_cr0();
         cr0 |= CR0_CACHE_DISABLE; /* 禁止缓存 */
         store_cr0(cr0);
@@ -122,7 +144,7 @@ unsigned int memtest(unsigned int start, unsigned int end) {
 
     i = memtest_sub(start, end);
 
-    if (flg486 != 0) {
+    if (!before_386) {
         cr0 = load_cr0();
         cr0 &= ~CR0_CACHE_DISABLE; /* 高速缓存许可 */
         store_cr0(cr0);

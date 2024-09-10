@@ -1,7 +1,7 @@
 #include <linux/stddef.h>
 
 #include "bootpack.h"
-#include "naskfunc.h"
+#include "asmfunc.h"
 
 #define KEYCMD_SENDTO_MOUSE 0xd4
 #define MOUSECMD_ENABLE 0xf4

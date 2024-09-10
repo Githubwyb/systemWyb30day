@@ -1,14 +1,11 @@
 #include "bootpack.h"
 
-#include <linux/stddef.h>
-#include <linux/types.h>
-#include <stdio.h>
-#include <string.h>
+#include <linux/compiler.h>
+#include <linux/kernel.h>
 
+#include "asmfunc.h"
 #include "fonts.h"
 #include "graphic.h"
-#include "naskfunc.h"
-
 #define MEMMAN_FREES 4096  // 大约32KB
 #define MEMMAN_ADDR 0x003c0000
 
@@ -20,11 +17,11 @@ struct FREEINFO {
 
 // 内存管理
 struct MEMMAN {
-    int32_t frees;     // 可用信息数据
-    int32_t maxfrees;  // 用于观察可用状况：frees的最大值
-    int32_t lostsize;  // 释放失败的内存的大小总和
-    int32_t losts;     // 释放失败的次数
-    struct FREEINFO free[MEMMAN_FREES];
+    int32_t frees;                       // free信息表的占用总数
+    int32_t maxfrees;                    // 用于观察可用状况：frees的最大值
+    int32_t lostsize;                    // 释放失败的内存的大小总和
+    int32_t losts;                       // 释放失败的次数
+    struct FREEINFO free[MEMMAN_FREES];  // 所有free信息表
 };
 
 void memman_init(struct MEMMAN *man) {
@@ -33,7 +30,6 @@ void memman_init(struct MEMMAN *man) {
     man->lostsize = 0;
     man->losts = 0;
 }
-
 /**
  * @brief 获取剩余内存大小
  *
@@ -71,7 +67,7 @@ uint32_t memman_alloc(struct MEMMAN *man, uint32_t size) {
 }
 
 int memman_free(struct MEMMAN *man, uint32_t addr, uint32_t size) {
-    int32_t i;
+    int32_t i;  // 要存入内存的idx
     int32_t j;
     // 为了便于归纳内存，将free[]按照addr的顺序排列
     // 先决定放哪里
@@ -105,7 +101,7 @@ int memman_free(struct MEMMAN *man, uint32_t addr, uint32_t size) {
     // 既不能和前面归纳到一起，也不能和后面归纳到一起，新建一个info
     if (man->frees < MEMMAN_FREES) {
         // 腾个位置
-        for (j = man->frees; i > i; --j) {
+        for (j = man->frees; j > i; --j) {
             man->free[j] = man->free[j - 1];
         }
         ++man->frees;
@@ -125,6 +121,7 @@ int memman_free(struct MEMMAN *man, uint32_t addr, uint32_t size) {
 unsigned int memtest(unsigned int start, unsigned int end);
 
 void HariMain(void) {
+    struct BOOTINFO *binfo = (struct BOOTINFO *)ADR_BOOTINFO;
     char s[40];
 
     // 初始化段和中断
@@ -136,22 +133,22 @@ void HariMain(void) {
 
     init_keyboard();
     enable_mouse();
-    uint32_t memtotal = memtest(0x00400000, 0xbfffffff);
-    struct MEMMAN *memman = (struct MEMMAN *)MEMMAN_ADDR;
-    memman_init(memman);
-    memman_free(memman, 0x00001000, 0x0009e000);
-    memman_free(memman, 0x00400000, memtotal - 0x00400000);
 
     init_palette();
-    struct BOOTINFO *binfo = (struct BOOTINFO *)ADR_BOOTINFO;
     init_screen(binfo->vram, binfo->scrnx, binfo->scrny);
-
+    // 画鼠标
     unsigned char mcursor[256];
     int mx = (binfo->scrnx - 16) / 2;
     int my = (binfo->scrny - 28 - 16) / 2;
     init_mouse_cursor8(mcursor, COL8_009999);
     putblock8_8(binfo->vram, binfo->scrnx, 16, 16, mx, my, mcursor, 16);
 
+    // 处理内存
+    uint32_t memtotal = memtest(0x00400000, 0xbfffffff);
+    struct MEMMAN *memman = (struct MEMMAN *)MEMMAN_ADDR;
+    memman_init(memman);
+    memman_free(memman, 0x00001000, 0x0009e000);
+    memman_free(memman, 0x00400000, memtotal - 0x00400000);
     sprintf(s, "memory %dMB    free: %dKB", memtotal / 1024 / 1024, memman_total(memman) / 1024);
     put_font8_str(binfo->vram, binfo->scrnx, 0, 32, COL8_FFFFFF, s);
 
@@ -189,7 +186,7 @@ void HariMain(void) {
                     s[2] = 'C';
                 }
                 // 打印鼠标数据
-                boxfill8(binfo->vram, binfo->scrnx, COL8_009999, 32, 16, 32 + 15 * 8 - 1, 31);
+                boxfill8(binfo->vram, binfo->scrnx, COL8_009999, 32, 16, 32 + 20 * 8 - 1, 31);
                 put_font8_str(binfo->vram, binfo->scrnx, 32, 16, COL8_FFFFFF, s);
 
                 // 移动光标
@@ -223,22 +220,44 @@ void HariMain(void) {
 #define EFLAGS_AC_BIT 0x00040000
 #define CR0_CACHE_DISABLE 0x60000000
 
+static unsigned int memtest_sub(unsigned int start, unsigned int end) {
+    unsigned int i, old, pat0 = 0xaa55aa55, pat1 = 0x55aa55aa;
+    volatile unsigned int *p;  // 这里加上volatile，防止编译器优化
+    // unsigned int *p = 0;
+    for (i = start; i <= end; i += 0x1000) {
+        p = (unsigned int *)(i + 0xffc);
+        old = *p;         /* 记录以前的值 */
+        *p = pat0;        /* 尝试写 */
+        *p ^= 0xffffffff; /* 反转 */
+        if (*p != pat1) { /* 检查反转结果 */
+        not_memory:
+            *p = old;
+            break;
+        }
+        *p ^= 0xffffffff; /* 再次反转 */
+        if (*p != pat0) { /* 检查反转结果 */
+            goto not_memory;
+        }
+        *p = old; /* 恢复原来的值 */
+    }
+    return i;
+}
+
 unsigned int memtest(unsigned int start, unsigned int end) {
-    char flg486 = 0;
+    bool before_386;
     unsigned int eflg, cr0, i;
 
-    /* 确认是386还是486以后 */
+    // 386及之前的cpu，没有AC这个标记位，所以设置之后还是返回0，使用此方式判断是否为386及以前
     eflg = io_load_eflags();
-    eflg |= EFLAGS_AC_BIT; /* AC-bit = 1 */
+    eflg |= EFLAGS_AC_BIT;
     io_store_eflags(eflg);
     eflg = io_load_eflags();
-    if ((eflg & EFLAGS_AC_BIT) != 0) { /* 在386中，即使AC=1，也会自动返回0。 */
-        flg486 = 1;
-    }
-    eflg &= ~EFLAGS_AC_BIT; /* AC-bit = 0 */
+    before_386 = (eflg & EFLAGS_AC_BIT) == 0;
+    // 还原AC标记位
+    eflg &= ~EFLAGS_AC_BIT;
     io_store_eflags(eflg);
 
-    if (flg486 != 0) {
+    if (!before_386) {
         cr0 = load_cr0();
         cr0 |= CR0_CACHE_DISABLE; /* 禁止缓存 */
         store_cr0(cr0);
@@ -246,11 +265,18 @@ unsigned int memtest(unsigned int start, unsigned int end) {
 
     i = memtest_sub(start, end);
 
-    if (flg486 != 0) {
+    if (!before_386) {
         cr0 = load_cr0();
         cr0 &= ~CR0_CACHE_DISABLE; /* 高速缓存许可 */
         store_cr0(cr0);
     }
 
     return i;
+}
+
+void debug_print(const char *s) {
+    struct BOOTINFO *binfo = (struct BOOTINFO *)ADR_BOOTINFO;
+    // 320 x 200
+    boxfill8(binfo->vram, binfo->scrnx, COL8_000000, 0, 100, 200, 150);
+    put_font8_str(binfo->vram, binfo->scrnx, 0, 100, COL8_FFFFFF, s);
 }

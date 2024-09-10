@@ -2,14 +2,14 @@
 #include <asm/desc_defs.h>
 #include <linux/kernel.h>
 
-#include "naskfunc.h"
+#include "asmfunc.h"
 
-#define ADR_IDT 0x0026f800     // IDT的内存位置
-#define LIMIT_IDT 0x000007ff   // IDT占用的字节数
-#define ADR_GDT 0x00270000     // GDT的内存位置
-#define LIMIT_GDT 0x0000ffff   // GDT占用的字节数
-#define ADR_BOTPAK 0x00280000  // bootpack.hrb所在的地址
-#define LIMIT_BOTPAK 0x0007f   // bootpack.hrb最大为 4k x 128 = 512k
+#define ADR_IDT 0x0026f800       // IDT的内存位置
+#define LIMIT_IDT 0x000007ff     // IDT占用的字节数
+#define ADR_GDT 0x00270000       // GDT的内存位置
+#define LIMIT_GDT 0x0000ffff     // GDT占用的字节数
+#define ADR_BOTPAK 0x00280000    // kernel所在的地址
+#define LIMIT_BOTPAK 0x0000007f  // kernel最大为4K x 128 = 512KB
 
 // 全局gdt表
 static const struct gdt_page gdt_page = {.gdt = {
@@ -27,10 +27,15 @@ static const struct gdt_page gdt_page = {.gdt = {
 
 #define DEFAULT_STACK 0
 
-#define G(_vector, _addr, _ist, _type, _dpl, _segment)                                                         \
-    {                                                                                                          \
-        .vector = _vector, .bits.ist = _ist, .bits.type = _type, .bits.dpl = _dpl, .bits.p = 1, .addr = _addr, \
-        .segment = _segment,                                                                                   \
+#define G(_vector, _addr, _ist, _type, _dpl, _segment) \
+    {                                                  \
+        .vector = _vector,                             \
+        .bits.ist = _ist,                              \
+        .bits.type = _type,                            \
+        .bits.dpl = _dpl,                              \
+        .bits.p = 1,                                   \
+        .addr = _addr,                                 \
+        .segment = _segment,                           \
     }
 
 /* Interrupt gate */
@@ -41,12 +46,17 @@ static const struct gdt_page gdt_page = {.gdt = {
 
 // idt表
 static const struct idt_data idt_table[] = {
+    // gcc链接的时候，已经指定了地址在0x00280000，所有函数在汇编代码中就是真实地址（0x00280000后面）
+    // 在汇编启动时拷贝到0x00280000，其他c代码实际使用就是这个地址
+    // 但是对于cpu来说，不关注是否拷贝到内存的哪个位置，只关注段内偏移，所以idt中设置的是在段中的偏移
+    // 这里需要减去ADR_BOTPAK
+
     // PS/2键盘中断
-    INTG(0x21, asm_inthandler21),
+    INTG(0x21, (int)asm_inthandler21-ADR_BOTPAK),
     // 处理27中断
-    INTG(0x27, asm_inthandler27),
+    INTG(0x27, (int)asm_inthandler27-ADR_BOTPAK),
     // PS/2鼠标中断
-    INTG(0x2c, asm_inthandler2c),
+    INTG(0x2c, (int)asm_inthandler2c-ADR_BOTPAK),
 };
 
 void init_gdtidt(void) {
@@ -54,7 +64,7 @@ void init_gdtidt(void) {
 
     // 初始化GDT
     struct desc_struct *gdt = (struct desc_struct *)ADR_GDT;
-    // bootpack.hrb的段
+    // C语言的段
     write_gdt_entry(gdt, GDT_ENTRY_KERNEL_CS, &gdt_page.gdt[GDT_ENTRY_KERNEL_CS], DESCTYPE_S);
     // cpu管理的总内存
     write_gdt_entry(gdt, GDT_ENTRY_KERNEL_DS, &gdt_page.gdt[GDT_ENTRY_KERNEL_DS], DESCTYPE_S);
@@ -63,11 +73,9 @@ void init_gdtidt(void) {
 
     // 初始化IDT
     gate_desc *idt = (gate_desc *)ADR_IDT;
-    gate_desc desc;
-    struct idt_data empty = INTG(0, 0);
+    gate_desc desc = {0};
     // 所有中断位置设置为空
     for (i = 0; i < LIMIT_IDT / sizeof(gate_desc); i++) {
-        idt_init_desc(&desc, &empty);
         write_idt_entry(idt, i, &desc);
     }
     // 初始化要使用的中断

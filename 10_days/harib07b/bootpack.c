@@ -1,15 +1,14 @@
 #include "bootpack.h"
 
-#include <linux/stddef.h>
-#include <linux/types.h>
-#include <stdio.h>
-#include <string.h>
+#include <linux/compiler.h>
+#include <linux/kernel.h>
 
+#include "asmfunc.h"
 #include "fonts.h"
 #include "graphic.h"
-#include "naskfunc.h"
 
 void HariMain(void) {
+    struct BOOTINFO *binfo = (struct BOOTINFO *)ADR_BOOTINFO;
     char s[40];
 
     // 初始化段和中断
@@ -21,22 +20,22 @@ void HariMain(void) {
 
     init_keyboard();
     enable_mouse();
-    uint32_t memtotal = memtest(0x00400000, 0xbfffffff);
-    struct MEMMAN *memman = (struct MEMMAN *)MEMMAN_ADDR;
-    memman_init(memman);
-    memman_free(memman, 0x00001000, 0x0009e000);
-    memman_free(memman, 0x00400000, memtotal - 0x00400000);
 
     init_palette();
-    struct BOOTINFO *binfo = (struct BOOTINFO *)ADR_BOOTINFO;
     init_screen(binfo->vram, binfo->scrnx, binfo->scrny);
-
+    // 画鼠标
     unsigned char mcursor[256];
     int mx = (binfo->scrnx - 16) / 2;
     int my = (binfo->scrny - 28 - 16) / 2;
     init_mouse_cursor8(mcursor, COL8_009999);
     putblock8_8(binfo->vram, binfo->scrnx, 16, 16, mx, my, mcursor, 16);
 
+    // 处理内存
+    uint32_t memtotal = memtest(0x00400000, 0xbfffffff);
+    struct MEMMAN *memman = (struct MEMMAN *)MEMMAN_ADDR;
+    memman_init(memman);
+    memman_free(memman, 0x00001000, 0x0009e000);
+    memman_free(memman, 0x00400000, memtotal - 0x00400000);
     sprintf(s, "memory %dMB    free: %dKB", memtotal / 1024 / 1024, memman_total(memman) / 1024);
     put_font8_str(binfo->vram, binfo->scrnx, 0, 32, COL8_FFFFFF, s);
 
@@ -74,7 +73,7 @@ void HariMain(void) {
                     s[2] = 'C';
                 }
                 // 打印鼠标数据
-                boxfill8(binfo->vram, binfo->scrnx, COL8_009999, 32, 16, 32 + 15 * 8 - 1, 31);
+                boxfill8(binfo->vram, binfo->scrnx, COL8_009999, 32, 16, 32 + 20 * 8 - 1, 31);
                 put_font8_str(binfo->vram, binfo->scrnx, 32, 16, COL8_FFFFFF, s);
 
                 // 移动光标
@@ -103,4 +102,11 @@ void HariMain(void) {
             }
         }
     }
+}
+
+void debug_print(const char *s) {
+    struct BOOTINFO *binfo = (struct BOOTINFO *)ADR_BOOTINFO;
+    // 320 x 200
+    boxfill8(binfo->vram, binfo->scrnx, COL8_000000, 0, 100, 200, 150);
+    put_font8_str(binfo->vram, binfo->scrnx, 0, 100, COL8_FFFFFF, s);
 }

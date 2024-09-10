@@ -3,7 +3,6 @@
 
 #include <linux/kfifo.h>
 #include <linux/types.h>
-#include <stddef.h>
 
 // boot相关信息，内存地址 0x0ff0-0x0fff
 #define ADR_BOOTINFO 0x00000ff0
@@ -99,13 +98,14 @@ struct FREEINFO {
     uint32_t addr;
     uint32_t size;
 };
+
 // 内存管理
 struct MEMMAN {
-    int32_t frees;     // 可用信息数据
-    int32_t maxfrees;  // 用于观察可用状况：frees的最大值
-    int32_t lostsize;  // 释放失败的内存的大小总和
-    int32_t losts;     // 释放失败的次数
-    struct FREEINFO free[MEMMAN_FREES];
+    int32_t frees;                       // free信息表的占用总数
+    int32_t maxfrees;                    // 用于观察可用状况：frees的最大值
+    int32_t lostsize;                    // 释放失败的内存的大小总和
+    int32_t losts;                       // 释放失败的次数
+    struct FREEINFO free[MEMMAN_FREES];  // 所有free信息表
 };
 unsigned int memtest(unsigned int start, unsigned int end);
 /**
@@ -137,4 +137,4 @@ uint32_t memman_alloc_4k(struct MEMMAN *man, uint32_t size);
  */
 int memman_free_4k(struct MEMMAN *man, uint32_t addr, uint32_t size);
 
-#endif /* __BOOTPACK_H__ */
+#endif  // __BOOTPACK_H__

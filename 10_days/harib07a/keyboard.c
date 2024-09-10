@@ -1,7 +1,7 @@
 #include <linux/stddef.h>
 
 #include "bootpack.h"
-#include "naskfunc.h"
+#include "asmfunc.h"
 
 #define PORT_KEYDAT 0x0060
 #define KEYSTA_SEND_NOTREADY 0x02

@@ -7,6 +7,8 @@
 #include "fonts.h"
 #include "graphic.h"
 
+unsigned int memtest(unsigned int start, unsigned int end);
+
 void HariMain(void) {
     struct BOOTINFO *binfo = (struct BOOTINFO *)ADR_BOOTINFO;
     char s[40];
@@ -23,20 +25,15 @@ void HariMain(void) {
 
     init_palette();
     init_screen(binfo->vram, binfo->scrnx, binfo->scrny);
-    // 画鼠标
+
     unsigned char mcursor[256];
     int mx = (binfo->scrnx - 16) / 2;
     int my = (binfo->scrny - 28 - 16) / 2;
     init_mouse_cursor8(mcursor, COL8_009999);
     putblock8_8(binfo->vram, binfo->scrnx, 16, 16, mx, my, mcursor, 16);
 
-    // 处理内存
-    uint32_t memtotal = memtest(0x00400000, 0xbfffffff);
-    struct MEMMAN *memman = (struct MEMMAN *)MEMMAN_ADDR;
-    memman_init(memman);
-    memman_free(memman, 0x00001000, 0x0009e000);
-    memman_free(memman, 0x00400000, memtotal - 0x00400000);
-    sprintf(s, "memory %dMB    free: %dKB", memtotal / 1024 / 1024, memman_total(memman) / 1024);
+    int i = memtest(0x00400000, 0xbfffffff) / (1024 * 1024);
+    sprintf(s, "memory %dMB", i);
     put_font8_str(binfo->vram, binfo->scrnx, 0, 32, COL8_FFFFFF, s);
 
     struct MOUSE_DEC mdec;
@@ -102,6 +99,63 @@ void HariMain(void) {
             }
         }
     }
+}
+
+#define EFLAGS_AC_BIT 0x00040000
+#define CR0_CACHE_DISABLE 0x60000000
+
+static unsigned int memtest_sub(unsigned int start, unsigned int end) {
+    unsigned int i, old, pat0 = 0xaa55aa55, pat1 = 0x55aa55aa;
+    volatile unsigned int *p;       // 这里加上volatile，防止编译器优化
+    // unsigned int *p = 0;
+    for (i = start; i <= end; i += 0x1000) {
+        p = (unsigned int *)(i + 0xffc);
+        old = *p;         /* 记录以前的值 */
+        *p = pat0;        /* 尝试写 */
+        *p ^= 0xffffffff; /* 反转 */
+        if (*p != pat1) { /* 检查反转结果 */
+        not_memory:
+            *p = old;
+            break;
+        }
+        *p ^= 0xffffffff; /* 再次反转 */
+        if (*p != pat0) { /* 检查反转结果 */
+            goto not_memory;
+        }
+        *p = old; /* 恢复原来的值 */
+    }
+    return i;
+}
+
+unsigned int memtest(unsigned int start, unsigned int end) {
+    bool before_386;
+    unsigned int eflg, cr0, i;
+
+    // 386及之前的cpu，没有AC这个标记位，所以设置之后还是返回0，使用此方式判断是否为386及以前
+    eflg = io_load_eflags();
+    eflg |= EFLAGS_AC_BIT;
+    io_store_eflags(eflg);
+    eflg = io_load_eflags();
+    before_386 = (eflg & EFLAGS_AC_BIT) == 0;
+    // 还原AC标记位
+    eflg &= ~EFLAGS_AC_BIT;
+    io_store_eflags(eflg);
+
+    if (!before_386) {
+        cr0 = load_cr0();
+        cr0 |= CR0_CACHE_DISABLE; /* 禁止缓存 */
+        store_cr0(cr0);
+    }
+
+    i = memtest_sub(start, end);
+
+    if (!before_386) {
+        cr0 = load_cr0();
+        cr0 &= ~CR0_CACHE_DISABLE; /* 高速缓存许可 */
+        store_cr0(cr0);
+    }
+
+    return i;
 }
 
 void debug_print(const char *s) {
