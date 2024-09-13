@@ -58,7 +58,7 @@ void HariMain(void) {
     put_font8_str(buf_back, binfo->scrnx, 0, 0, COL8_FFFFFF, s);
     sprintf(s, "memory %dMB    free: %dKB", memtotal / 1024 / 1024, memman_total(memman) / 1024);
     put_font8_str(buf_back, binfo->scrnx, 0, 32, COL8_FFFFFF, s);
-    sheet_refresh(shtctl);
+    sheet_refresh(shtctl, sht_back, 0, 0, binfo->scrnx, 48);  // 刷新打印字符的位置，从0,0开始，到scrnx,48结束
 
     struct MOUSE_DEC mdec;
     mdec.phase = 0;
@@ -74,7 +74,7 @@ void HariMain(void) {
                 sprintf(s, "%02X", i);
                 boxfill8(buf_back, binfo->scrnx, COL8_009999, 0, 16, 15, 31);
                 put_font8_str(buf_back, binfo->scrnx, 0, 16, COL8_FFFFFF, s);
-                sheet_refresh(shtctl);
+                sheet_refresh(shtctl, sht_back, 0, 0, 16, 32);  // 只变更16x32的区域，和boxfill8的区域一致
             } else if (!kfifo_is_empty(&g_mouseBuf)) {
                 kfifo_get(&g_mouseBuf, &i);
                 io_sti();
@@ -97,6 +97,7 @@ void HariMain(void) {
                 // 打印鼠标数据
                 boxfill8(buf_back, binfo->scrnx, COL8_009999, 32, 16, 32 + 20 * 8 - 1, 31);
                 put_font8_str(buf_back, binfo->scrnx, 32, 16, COL8_FFFFFF, s);
+                sheet_refresh(shtctl, sht_back, 32, 16, 32 + 20 * 8, 32);  // 和boxfill8的区域一致
 
                 // 移动光标
                 mx += mdec.x;
@@ -117,6 +118,7 @@ void HariMain(void) {
                 sprintf(s, "(%3d, %3d)", mx, my);
                 boxfill8(buf_back, binfo->scrnx, COL8_009999, 0, 0, 79, 15);
                 put_font8_str(buf_back, binfo->scrnx, 0, 0, COL8_FFFFFF, s);
+                sheet_refresh(shtctl, sht_back, 0, 0, 80, 16);  // 和boxfill8的区域一致
 
                 // 把光标画上去
                 sheet_slide(shtctl, sht_mouse, mx, my);
