@@ -181,7 +181,7 @@ static inline void *__memset_generic(void *s, char c, size_t count)
 extern size_t strnlen(const char *s, size_t count);
 /* end of additional stuff */
 
-#define __HAVE_ARCH_STRSTR
+// TODO #define __HAVE_ARCH_STRSTR
 extern char *strstr(const char *cs, const char *ct);
 
 #define __memset(s, c, count)				\

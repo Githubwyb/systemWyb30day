@@ -52,7 +52,7 @@ cobjs: $(C_OBJS)
 	objcopy -S -O binary -j .text $@.out $@
 
 run :
-	qemu-system-x86_64 -enable-kvm -m 4G -smp 1 -fda haribote.img
+	qemu-system-x86_64 -enable-kvm -m 4G -smp 1 -drive file=haribote.img,format=raw,if=floppy
 
 clean:
 	rm -f kernel

@@ -17,5 +17,4 @@ cobjs
 header
 
 bootloader
-kernel
 kernel_files_org/
