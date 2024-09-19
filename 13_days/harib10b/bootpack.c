@@ -31,14 +31,12 @@ void HariMain(void) {
 
     // 处理定时器
     TimerBufType timerfifo;
-    TimerBufType timerfifo2;
-    TimerBufType timerfifo3;
     struct TIMER timer, timer2, timer3;
-    timer_init(&timer, &timerfifo, 1);
-    timer_settime(&timer, jiffies + msecs_to_jiffies(10000));
-    timer_init(&timer2, &timerfifo2, 1);
-    timer_settime(&timer2, jiffies + msecs_to_jiffies(3000));
-    timer_init(&timer3, &timerfifo3, 1);
+    timer_init(&timer, &timerfifo, 10);
+    timer_settime(&timer, jiffies + msecs_to_jiffies(10 * MSEC_PER_SEC));
+    timer_init(&timer2, &timerfifo, 3);
+    timer_settime(&timer2, jiffies + msecs_to_jiffies(3 * MSEC_PER_SEC));
+    timer_init(&timer3, &timerfifo, 1);
     timer_settime(&timer3, jiffies + msecs_to_jiffies(500));
 
     LOG_INFO("create timer done");
@@ -115,8 +113,7 @@ void HariMain(void) {
         put_font8_str_sht(sht_win, 40, 28, COL8_FFFFFF, COL8_CCCCCC, s);
 
         io_cli();
-        if (kfifo_is_empty(&g_keybuf) && kfifo_is_empty(&g_mouseBuf) && kfifo_is_empty(&timerfifo) &&
-            kfifo_is_empty(&timerfifo2) && kfifo_is_empty(&timerfifo3)) {
+        if (kfifo_is_empty(&g_keybuf) && kfifo_is_empty(&g_mouseBuf) && kfifo_is_empty(&timerfifo)) {
             io_sti();
             continue;
         }
@@ -173,24 +170,26 @@ void HariMain(void) {
         } else if (!kfifo_is_empty(&timerfifo)) {
             kfifo_get(&timerfifo, &i);
             io_sti();
-            put_font8_str_sht(sht_back, 0, 64, COL8_FFFFFF, COL8_009999, "10[sec]");
-        } else if (!kfifo_is_empty(&timerfifo2)) {
-            kfifo_get(&timerfifo2, &i);
-            io_sti();
-            put_font8_str_sht(sht_back, 0, 80, COL8_FFFFFF, COL8_009999, "3[sec]");
-        } else if (!kfifo_is_empty(&timerfifo3)) {
-            // 模拟光标
-            kfifo_get(&timerfifo3, &i);
-            io_sti();
-            if (i != 0) {
-                timer_init(&timer3, &timerfifo3, 0);
-                boxfill8(buf_back, binfo->scrnx, COL8_FFFFFF, 8, 96, 15, 111);
-            } else {
-                timer_init(&timer3, &timerfifo3, 1);
-                boxfill8(buf_back, binfo->scrnx, COL8_009999, 8, 96, 15, 111);
+            switch (i) {
+                case 10:
+                    put_font8_str_sht(sht_back, 0, 64, COL8_FFFFFF, COL8_009999, "10[sec]");
+                    break;
+                case 3:
+                    put_font8_str_sht(sht_back, 0, 80, COL8_FFFFFF, COL8_009999, "3[sec]");
+                    break;
+                default:
+                    // 模拟光标
+                    if (i != 0) {
+                        timer_init(&timer3, &timerfifo, 0);
+                        boxfill8(buf_back, binfo->scrnx, COL8_FFFFFF, 8, 96, 15, 111);
+                    } else {
+                        timer_init(&timer3, &timerfifo, 1);
+                        boxfill8(buf_back, binfo->scrnx, COL8_009999, 8, 96, 15, 111);
+                    }
+                    timer_settime(&timer3, jiffies + msecs_to_jiffies(500));
+                    sheet_refresh(sht_back, 8, 96, 16, 112);
+                    break;
             }
-            timer_settime(&timer3, jiffies + msecs_to_jiffies(500));
-            sheet_refresh(sht_back, 8, 96, 16, 112);
         }
     }
 }

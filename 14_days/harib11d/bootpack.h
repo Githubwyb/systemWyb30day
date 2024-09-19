@@ -15,9 +15,14 @@ struct BOOTINFO {
     short scrny;  // 分辨率的y
     u8 *vram;     // 图像缓冲区开始地址
 };
-void debug_print(const char *fmt, ...);
-void debug_print1(const char *fmt, ...);
-void debug_print2(const char *fmt, ...);
+
+// FIFO缓冲区重整
+// 0~1          光标闪烁用定时器
+// 3            3秒定时器
+// 10           10秒定时器
+// 256～511     键盘输入（读入数值加上256）
+// 512～767     鼠标输入（读入数值加上512）
+typedef STRUCT_KFIFO(unsigned int, 128) FIFO32Type;
 
 /* dsctbl.c */
 void init_gdtidt();
@@ -26,10 +31,6 @@ void init_gdtidt();
 #define PORT_KEYDAT 0x0060
 #define PORT_KEYSTA 0x0064
 #define PORT_KEYCMD 0x0064
-// 按键结构体
-#define KEYBUF_KFIFO_SIZE 32
-typedef STRUCT_KFIFO(unsigned char, KEYBUF_KFIFO_SIZE) KeyBufType;
-extern KeyBufType g_keybuf;
 /**
  * @brief 处理PS/2键盘的中断
  *
@@ -45,18 +46,15 @@ void wait_KBC_sendready();
  * @brief 键盘控制器的初始化
  *
  */
-void init_keyboard();
+void init_keyboard(FIFO32Type *fifo, int data0);
 
 /* mouse.c */
+// 鼠标结构体
 struct MOUSE_DEC {
     unsigned char buf[3];  // 记录数据
     uint8_t phase;         // 记录状态
     int x, y, btn;
 };
-// 鼠标结构体
-#define MOUSEBUF_KFIFO_SIZE 128
-typedef STRUCT_KFIFO(unsigned char, MOUSEBUF_KFIFO_SIZE) MouseBufType;
-extern MouseBufType g_mouseBuf;
 /**
  * @brief 处理PS/2鼠标的中断
  *
@@ -75,7 +73,7 @@ bool mouse_decode(struct MOUSE_DEC *mdec, uint8_t dat);
  * @brief 使能鼠标
  *
  */
-void enable_mouse();
+void enable_mouse(FIFO32Type *fifo, int data0);
 
 /* int.c */
 #define PIC0_ICW1 0x0020
@@ -204,17 +202,16 @@ void sheet_free(struct SHEET *sht);
 /* timer.c */
 extern volatile unsigned long jiffies;
 void init_pit(void);
-typedef STRUCT_KFIFO(unsigned char, 8) TimerBufType;
 struct TIMER {
     struct hlist_node entry;
     unsigned long expires;  // 超时时间，取绝对时间，基于jiffies
     unsigned int flags;
-    TimerBufType *fifo;
-    unsigned char data;
+    FIFO32Type *fifo;
+    unsigned int data;
 };
 
 void timer_free(struct TIMER *timer);
-void timer_init(struct TIMER *timer, TimerBufType *fifo, unsigned char data);
+void timer_init(struct TIMER *timer, FIFO32Type *fifo, unsigned int data);
 void timer_settime(struct TIMER *timer, unsigned long timeout);
 
 #endif  // __BOOTPACK_H__

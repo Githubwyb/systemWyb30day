@@ -17,6 +17,8 @@ static struct SHEET *s_sht_back = NULL;
 void HariMain(void) {
     struct BOOTINFO *binfo = (struct BOOTINFO *)ADR_BOOTINFO;
     char s[40];
+    FIFO32Type fifo;
+    INIT_KFIFO(fifo);
 
     LOG_INFO("HariMain start");
     // 初始化段和中断
@@ -30,22 +32,19 @@ void HariMain(void) {
     LOG_INFO("init gdtidt done");
 
     // 处理定时器
-    TimerBufType timerfifo;
-    TimerBufType timerfifo2;
-    TimerBufType timerfifo3;
     struct TIMER timer, timer2, timer3;
-    timer_init(&timer, &timerfifo, 1);
-    timer_settime(&timer, jiffies + msecs_to_jiffies(10000));
-    timer_init(&timer2, &timerfifo2, 1);
-    timer_settime(&timer2, jiffies + msecs_to_jiffies(3000));
-    timer_init(&timer3, &timerfifo3, 1);
+    timer_init(&timer, &fifo, 10);
+    timer_settime(&timer, jiffies + msecs_to_jiffies(10 * MSEC_PER_SEC));
+    timer_init(&timer2, &fifo, 3);
+    timer_settime(&timer2, jiffies + msecs_to_jiffies(3 * MSEC_PER_SEC));
+    timer_init(&timer3, &fifo, 1);
     timer_settime(&timer3, jiffies + msecs_to_jiffies(500));
 
     LOG_INFO("create timer done");
 
     // 键盘鼠标
-    init_keyboard();
-    enable_mouse();
+    init_keyboard(&fifo, 256);
+    enable_mouse(&fifo, 512);
 
     LOG_INFO("init keyboard and mouse done");
 
@@ -106,32 +105,28 @@ void HariMain(void) {
     sprintf(s, "memory %dMB    free: %dKB", memtotal / 1024 / 1024, memman_total(memman) / 1024);
     put_font8_str_sht(sht_back, 0, 32, COL8_FFFFFF, COL8_009999, s);
 
-    LOG_INFO("init windows done");
+    LOG_INFO("init windows done, memory %dMB, free: %dKB", memtotal / 1024 / 1024, memman_total(memman) / 1024);
 
     struct MOUSE_DEC mdec;
     mdec.phase = 0;
+    unsigned long count = 0;
     for (;;) {
-        sprintf(s, "%010lu", jiffies);
-        put_font8_str_sht(sht_win, 40, 28, COL8_FFFFFF, COL8_CCCCCC, s);
+        ++count;
 
         io_cli();
-        if (kfifo_is_empty(&g_keybuf) && kfifo_is_empty(&g_mouseBuf) && kfifo_is_empty(&timerfifo) &&
-            kfifo_is_empty(&timerfifo2) && kfifo_is_empty(&timerfifo3)) {
+        if (kfifo_is_empty(&fifo)) {
             io_sti();
             continue;
         }
 
-        unsigned char i = 0;
-        if (!kfifo_is_empty(&g_keybuf)) {
-            kfifo_get(&g_keybuf, &i);
-            io_sti();
-            sprintf(s, "%02X", i);
+        unsigned int i = 0;
+        kfifo_get(&fifo, &i);
+        io_sti();
+        if (256 <= i && i <= 511) {
+            sprintf(s, "%02X", i - 256);
             put_font8_str_sht(sht_back, 0, 16, COL8_FFFFFF, COL8_009999, s);
-        } else if (!kfifo_is_empty(&g_mouseBuf)) {
-            kfifo_get(&g_mouseBuf, &i);
-            io_sti();
-
-            if (!mouse_decode(&mdec, i)) {
+        } else if (512 <= i && i <= 767) {
+            if (!mouse_decode(&mdec, i - 512)) {
                 continue;
             }
 
@@ -170,27 +165,31 @@ void HariMain(void) {
 
             // 把光标画上去
             sheet_slide(sht_mouse, mx, my);
-        } else if (!kfifo_is_empty(&timerfifo)) {
-            kfifo_get(&timerfifo, &i);
-            io_sti();
-            put_font8_str_sht(sht_back, 0, 64, COL8_FFFFFF, COL8_009999, "10[sec]");
-        } else if (!kfifo_is_empty(&timerfifo2)) {
-            kfifo_get(&timerfifo2, &i);
-            io_sti();
-            put_font8_str_sht(sht_back, 0, 80, COL8_FFFFFF, COL8_009999, "3[sec]");
-        } else if (!kfifo_is_empty(&timerfifo3)) {
-            // 模拟光标
-            kfifo_get(&timerfifo3, &i);
-            io_sti();
-            if (i != 0) {
-                timer_init(&timer3, &timerfifo3, 0);
-                boxfill8(buf_back, binfo->scrnx, COL8_FFFFFF, 8, 96, 15, 111);
-            } else {
-                timer_init(&timer3, &timerfifo3, 1);
-                boxfill8(buf_back, binfo->scrnx, COL8_009999, 8, 96, 15, 111);
+        } else {
+            switch (i) {
+                case 10:
+                    put_font8_str_sht(sht_back, 0, 64, COL8_FFFFFF, COL8_009999, "10[sec]");
+                    sprintf(s, "%013lu", count);
+                    put_font8_str_sht(sht_win, 40, 28, COL8_000000, COL8_CCCCCC, s);
+                    LOG_INFO("count: %lu", count);
+                    break;
+                case 3:
+                    put_font8_str_sht(sht_back, 0, 80, COL8_FFFFFF, COL8_009999, "3[sec]");
+                    count = 0;  // 开始测试
+                    break;
+                default:
+                    // 模拟光标
+                    if (i != 0) {
+                        timer_init(&timer3, &fifo, 0);
+                        boxfill8(buf_back, binfo->scrnx, COL8_FFFFFF, 8, 96, 15, 111);
+                    } else {
+                        timer_init(&timer3, &fifo, 1);
+                        boxfill8(buf_back, binfo->scrnx, COL8_009999, 8, 96, 15, 111);
+                    }
+                    timer_settime(&timer3, jiffies + msecs_to_jiffies(500));
+                    sheet_refresh(sht_back, 8, 96, 16, 112);
+                    break;
             }
-            timer_settime(&timer3, jiffies + msecs_to_jiffies(500));
-            sheet_refresh(sht_back, 8, 96, 16, 112);
         }
     }
 }

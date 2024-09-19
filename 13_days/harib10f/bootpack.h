@@ -15,9 +15,6 @@ struct BOOTINFO {
     short scrny;  // 分辨率的y
     u8 *vram;     // 图像缓冲区开始地址
 };
-void debug_print(const char *fmt, ...);
-void debug_print1(const char *fmt, ...);
-void debug_print2(const char *fmt, ...);
 
 /* dsctbl.c */
 void init_gdtidt();
@@ -202,17 +199,22 @@ void sheet_slide(struct SHEET *sht, int vx0, int vy0);
 void sheet_free(struct SHEET *sht);
 
 /* timer.c */
-extern volatile unsigned long jiffies;
-void init_pit(void);
+#define MAX_TIMER		500
 typedef STRUCT_KFIFO(unsigned char, 8) TimerBufType;
 struct TIMER {
-    struct hlist_node entry;
-    unsigned long expires;  // 超时时间，取绝对时间，基于jiffies
+	unsigned long timeout;
     unsigned int flags;
-    TimerBufType *fifo;
-    unsigned char data;
+	TimerBufType *fifo;
+	unsigned char data;
 };
-
+struct TIMERCTL {
+	unsigned int next;
+	struct TIMER timer[MAX_TIMER];
+};
+extern struct TIMERCTL timerctl;
+extern volatile unsigned long jiffies;
+void init_pit(void);
+struct TIMER *timer_alloc(void);
 void timer_free(struct TIMER *timer);
 void timer_init(struct TIMER *timer, TimerBufType *fifo, unsigned char data);
 void timer_settime(struct TIMER *timer, unsigned long timeout);
