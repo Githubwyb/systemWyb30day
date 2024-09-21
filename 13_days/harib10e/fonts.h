@@ -66,7 +66,7 @@ static void put_font8_str_sht(struct SHEET *sht, int x, int y, int c, int b, con
     int y1 = y + 15;
     boxfill8(sht->buf, sht->bxsize, b, x, y, x1, y1);
     put_font8_str(sht->buf, sht->bxsize, x, y, c, s);
-    sheet_refresh(sht, x, y, x1, y1);
+    sheet_refresh(sht, x, y, x1 + 1, y1 + 1);
 }
 
 #endif
