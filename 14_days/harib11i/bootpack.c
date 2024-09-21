@@ -131,14 +131,18 @@ void HariMain(void) {
             // 处理键盘数据
             i -= 256;
             static char keytable[0x54] = {
-                [KEY_0] = '0',     [KEY_1] = '1', [KEY_2] = '2', [KEY_3] = '3', [KEY_4] = '4', [KEY_5] = '5',
-                [KEY_6] = '6',     [KEY_7] = '7', [KEY_8] = '8', [KEY_9] = '9', [KEY_A] = 'a', [KEY_B] = 'b',
-                [KEY_C] = 'c',     [KEY_D] = 'd', [KEY_E] = 'e', [KEY_F] = 'f', [KEY_G] = 'g', [KEY_H] = 'h',
-                [KEY_I] = 'i',     [KEY_J] = 'j', [KEY_K] = 'k', [KEY_L] = 'l', [KEY_M] = 'm', [KEY_N] = 'n',
-                [KEY_O] = 'o',     [KEY_P] = 'p', [KEY_Q] = 'q', [KEY_R] = 'r', [KEY_S] = 's', [KEY_T] = 't',
-                [KEY_U] = 'u',     [KEY_V] = 'v', [KEY_W] = 'w', [KEY_X] = 'x', [KEY_Y] = 'y', [KEY_Z] = 'z',
-                [KEY_SPACE] = ' ',
-            };
+                [KEY_0] = '0',          [KEY_1] = '1',          [KEY_2] = '2',         [KEY_3] = '3',
+                [KEY_4] = '4',          [KEY_5] = '5',          [KEY_6] = '6',         [KEY_7] = '7',
+                [KEY_8] = '8',          [KEY_9] = '9',          [KEY_A] = 'a',         [KEY_B] = 'b',
+                [KEY_C] = 'c',          [KEY_D] = 'd',          [KEY_E] = 'e',         [KEY_F] = 'f',
+                [KEY_G] = 'g',          [KEY_H] = 'h',          [KEY_I] = 'i',         [KEY_J] = 'j',
+                [KEY_K] = 'k',          [KEY_L] = 'l',          [KEY_M] = 'm',         [KEY_N] = 'n',
+                [KEY_O] = 'o',          [KEY_P] = 'p',          [KEY_Q] = 'q',         [KEY_R] = 'r',
+                [KEY_S] = 's',          [KEY_T] = 't',          [KEY_U] = 'u',         [KEY_V] = 'v',
+                [KEY_W] = 'w',          [KEY_X] = 'x',          [KEY_Y] = 'y',         [KEY_Z] = 'z',
+                [KEY_SPACE] = ' ',      [KEY_MINUS] = '-',      [KEY_EQUAL] = '=',     [KEY_LEFTBRACE] = '[',
+                [KEY_RIGHTBRACE] = ']', [KEY_BACKSLASH] = '\\', [KEY_SEMICOLON] = ';', [KEY_APOSTROPHE] = '\'',
+                [KEY_GRAVE] = '`',      [KEY_COMMA] = ',',      [KEY_DOT] = '.',       [KEY_SLASH] = '/'};
             sprintf(s, "%02X", i);
             put_font8_str_sht(sht_back, 0, 16, COL8_FFFFFF, COL8_009999, s);
             if (i < 0x54) {
