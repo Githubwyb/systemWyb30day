@@ -4,7 +4,7 @@
 #define io_sti() asm("sti")  //!!!本次添加部分
 #define io_hlt() asm("hlt")
 
-__visible void start_kernel(void) {
+__visible void __attribute__((section(".text.first"))) start_kernel(void) {
     int i;
     char *p;
 

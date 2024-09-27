@@ -1,6 +1,9 @@
 # head.S bootloader下一步入口，存放于软盘中的二进制内核文件头部
 #include <uapi/asm/processor-flags.h>
 
+#define GDT_ENTRY_KERNEL_CS 12
+#define GDT_ENTRY_KERNEL_DS 13
+
 # boot_info结构体成员对应的地址，给c语言读取使用
 #define CYLS	 0x0ff0
 #define LEDS	 0x0ff1
@@ -73,8 +76,7 @@ seta20gate:
 	orl		$X86_CR0_PE,%eax	# PE设置为1切换到保护模式
 	movl	%eax,%cr0
 
-	# 汇编代码在第2个段，所以跳转使用第二个段加上偏移
-	ljmp	$(2*8), $protcseg
+	jmp protcseg
 
 msg:
   	.asciz "\n\nkernel is loading"
@@ -95,15 +97,14 @@ puts:
 over:
 	ret
 
-	.code32		# 后面代码是32位代码段
 protcseg:
 	# Set up the protected-mode data segment registers
-	movw    $(1*8), %ax    			# Our data segment selector
-	movw    %ax, %ds                # -> DS: Data Segment
-	movw    %ax, %es                # -> ES: Extra Segment
-	movw    %ax, %fs                # -> FS
-	movw    %ax, %gs                # -> GS
-	movw    %ax, %ss                # -> SS: Stack Segment
+	movw    $(GDT_ENTRY_KERNEL_DS*8), %ax   # Our data segment selector
+	movw    %ax, %ds                		# -> DS: Data Segment
+	movw    %ax, %es                		# -> ES: Extra Segment
+	movw    %ax, %fs                		# -> FS
+	movw    %ax, %gs                		# -> GS
+	movw    %ax, %ss                		# -> SS: Stack Segment
 	# 设置栈指针到栈顶，调用c函数
 	movl    $STACK,%esp
 
@@ -128,8 +129,8 @@ protcseg:
 	subl	$(512/4),%ecx					# 去除启动扇区
 	call	asmmemcpy
 
-	# 调用c语言第一个指令，位置是第3个段的首地址
-	ljmp	$(3*8),$0x0000
+	# 调用c语言第一个指令，位置是CS段的首地址
+	ljmp	$(GDT_ENTRY_KERNEL_CS*8),$0x0000
 
 spin:
   	jmp spin
@@ -170,20 +171,28 @@ waitkbdout:
 #     u16 base2 : 8;      // 段的对应的内存实际地址high
 # } __attribute__((packed));
 # 第0个段是空的，全部是0
-# 第1个段是数据段，cpu管理的总内存，从0x00000000开始，0x92代表可读可写，内存上限为0xfffff，g = 1代表4K为单位，4G
-# 	按照结构体和16位低位高位计算 0xffff, 0x0000, 0x9200, 0x00cf
-# 第2个段是代码段，启动区所在位置，从0x00000000开始，0x9a代表可读可执行，内存上限为0x7ffff，g = 0代表字节为单位，512K
-# 	按照结构体和16位低位高位计算 0xffff, 0x0000, 0x9a00, 0x0047
-# 第3个段是代码段，c代码所在位置，从0x00280000开始，0x9a代表可读可执行，内存上限为0x7ffff，g = 0代表字节为单位，512K
+# 第12个段是代码段，c代码所在位置，从0x00280000开始，0x9a代表可读可执行，内存上限为0x7ffff，g = 0代表字节为单位，512K
 # 	按照结构体和16位低位高位计算 0xffff, 0x0000, 0x9a28, 0x0047
+# 第13个段是数据段，cpu管理的总内存，从0x00000000开始，0x92代表可读可写，内存上限为0xfffff，g = 1代表4K为单位，4G
+# 	按照结构体和16位低位高位计算 0xffff, 0x0000, 0x9200, 0x00cf
 .p2align	2	# 按照2^2 = 4字节对齐
 gdt:
-	.word	0x0000,0x0000,0x0000,0x0000		# null seg
-	.word	0xffff,0x0000,0x9200,0x00cf		# 可读写的段，数据段
-	.word	0xffff,0x0000,0x9a00,0x0047		# 汇编代码所在内存位置
-	.word	0xffff,0x0000,0x9a28,0x0047		# 给c代码使用的段
+	.word	0x0000,0x0000,0x0000,0x0000		# 0  null seg
+	.word	0x0000,0x0000,0x0000,0x0000		# 1  null seg
+	.word	0x0000,0x0000,0x0000,0x0000		# 2  null seg
+	.word	0x0000,0x0000,0x0000,0x0000		# 3  null seg
+	.word	0x0000,0x0000,0x0000,0x0000		# 4  null seg
+	.word	0x0000,0x0000,0x0000,0x0000		# 5  null seg
+	.word	0x0000,0x0000,0x0000,0x0000		# 6  null seg
+	.word	0x0000,0x0000,0x0000,0x0000		# 7  null seg
+	.word	0x0000,0x0000,0x0000,0x0000		# 8  null seg
+	.word	0x0000,0x0000,0x0000,0x0000		# 9  null seg
+	.word	0x0000,0x0000,0x0000,0x0000		# 10 null seg
+	.word	0x0000,0x0000,0x0000,0x0000		# 11 null seg
+	.word	0xffff,0x0000,0x9a28,0x0047		# 12 给c代码使用的段，代码段
+	.word	0xffff,0x0000,0x9200,0x00cf		# 13 可读写的段，数据段
 
 gdtdesc:
-  	.word   8*4-1                           # sizeof(gdt) - 1
+  	.word   8*14-1                          # sizeof(gdt) - 1
   	.long   gdt                             # address gdt
 start_kernel:

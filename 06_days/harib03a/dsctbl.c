@@ -50,8 +50,10 @@ void init_gdtidt(void) {
     for (i = 0; i < 8192; i++) {
         set_segmdesc(gdt + i, 0, 0, 0);
     }
-    set_segmdesc(gdt + 1, 0xffffffff, 0x00000000, 0x4092);
-    set_segmdesc(gdt + 2, 0x0000007f, 0x00280000, 0xc09a);
+    // CS段，给c语言使用的段
+    set_segmdesc(gdt + 12, 0x0000007f, 0x00280000, 0xc09a);
+    // DS段，cpu管理所有内存的段
+    set_segmdesc(gdt + 13, 0xffffffff, 0x00000000, 0x4092);
     load_gdtr(0xffff, 0x00270000);
 
     // 初始化IDT

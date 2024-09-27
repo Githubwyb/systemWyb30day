@@ -2,7 +2,7 @@
 
 extern void io_hlt(void);
 
-__visible void start_kernel(void) {
+__visible void __attribute__((section(".text.first"))) start_kernel(void) {
     int i;
     char *p;
 

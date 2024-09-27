@@ -1,8 +1,13 @@
 TOOLPATH = ../../z_tools
-INCLUDE = -I$(TOOLPATH)/haribote/ -I./include/ -I./arch/x86/include/ -I./arch/x86/include/uapi/ -I.
-CFLAGS  = -nostdinc -fno-builtin -D_SIZE_T -DCONFIG_X86_32 -Wall -Werror -fno-omit-frame-pointer -MD -m32
-CFLAGS += -Wno-int-to-pointer-cast
-LDFLAGS	= -m elf_i386
+KERNEL_FILES = ../../kernel_files
+INCLUDE = -I.
+INCLUDE += -I$(KERNEL_FILES)/arch/x86 -I$(KERNEL_FILES)/arch/x86/include/ -I$(KERNEL_FILES)/arch/x86/include/uapi/ -I$(KERNEL_FILES)/arch/x86/include/generated/ -I$(KERNEL_FILES)/arch/x86/include/generated/uapi/
+INCLUDE += -I$(KERNEL_FILES)/include/ -I$(KERNEL_FILES)/include/uapi/ -I.
+CFLAGS  = -Wall -Werror -Wno-int-to-pointer-cast -Wno-unused -Wno-array-bounds -Wno-int-conversion
+# -fno-pie 生成位置相关代码，位置无关代码暂时不清楚为什么会运行有问题，访问全局变量失败导致调色板设置有问题
+# -fno-stack-protector gcc默认会添加栈安全检查，但是这个会依赖glibc的库，导致undefined reference to `__stack_chk_fail'的问题
+CFLAGS += -MD -Os -fno-pie -nostdinc -nostdlib -fno-builtin -fno-stack-protector -DCONFIG_X86_32 -DBITS_PER_LONG=32 -DBITS_PER_LONG_LONG=64 -D__KERNEL__ -D__LITTLE_ENDIAN -m32
+LDFLAGS	= -m elf_i386 -no-pie
 
 all: img
 
@@ -10,14 +15,14 @@ bootloader : bootloader.S
 	nasm -w-zeroing -o $@.bin $@.S
 
 #下面四个命令通过模式匹配获取当前目录下的所有C文件
-SRCDIR = ./ ./lib/ ./init/
+SRCDIR = ./ $(KERNEL_FILES)/arch/x86/lib/ $(KERNEL_FILES)/lib/ $(KERNEL_FILES)/init/ ./init/
 
 C_SOURCES = $(foreach d,$(SRCDIR),$(wildcard $(d)*.c))
 C_OBJS = $(patsubst %.c,%.o,$(C_SOURCES))
 C_DEPS = $(patsubst %.c,%.d,$(C_SOURCES))
 
 %.o : %.c
-	gcc $(INCLUDE) $(CFLAGS) -Os -c -o $*.o $*.c
+	gcc $(INCLUDE) $(CFLAGS) -c -o $*.o $*.c
 
 # 生成img文件
 #   将ipl.S的512B内容写入到软盘镜像的C0-H0-S1的位置，用于启动扇区
@@ -40,17 +45,18 @@ kernel: header cobjs
 
 # kernel存在软盘的0x4400，拷贝到0x8000后就是0xc400
 # header.S启动从bootsect_start开始
+# header.S只能保留text段，因为cobjs在header.S最后面，多了段会导致拷贝磁盘出现偏移问题
 header: header.S
 	gcc $(INCLUDE) $(CFLAGS) -c -o $@.bin $<
 	ld $(LDFLAGS) -N -e bootsect_start -Ttext 0xc400 -o $@.out $@.bin
-	objdump -S $@.out >$@.asm
+	objdump -S -D $@.out > $@.asm
 	objcopy -S -O binary -j .text $@.out $@
 
 # c语言起始函数为start_kernel
 cobjs: $(C_OBJS)
-	ld $(LDFLAGS) -N -e start_kernel -Ttext 0x00280000 -o $@.out $^
-	objdump -S -D $@.out >$@.asm
-	objcopy -S -O binary -j .text $@.out $@
+	ld $(LDFLAGS) -N -T cobjs.ld -o $@.out $^
+	objdump -S -D $@.out > $@.asm
+	objcopy -S -O binary $@.out $@
 
 run :
 	qemu-system-x86_64 -enable-kvm -m 4G -smp 1 -drive file=haribote.img,format=raw,if=floppy

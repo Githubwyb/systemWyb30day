@@ -59,10 +59,10 @@ void init_gdtidt(void) {
     for (i = 0; i < LIMIT_GDT / sizeof(struct SEGMENT_DESCRIPTOR); i++) {
         set_segmdesc(gdt + i, 0, 0, 0);
     }
-    // cpu管理的总内存
-    set_segmdesc(gdt + 1, 0xffffffff, 0x00000000, AR_DATA32_RW);
-    // c语言的段
-    set_segmdesc(gdt + 2, LIMIT_BOTPAK, ADR_BOTPAK, AR_CODE32_ER);
+    // CS段，给c语言使用的段
+    set_segmdesc(gdt + 12, LIMIT_BOTPAK, ADR_BOTPAK, AR_CODE32_ER);
+    // DS段，cpu管理所有内存的段
+    set_segmdesc(gdt + 13, 0xffffffff, 0x00000000, AR_DATA32_RW);
     load_gdtr(LIMIT_GDT, ADR_GDT);
 
     // 初始化IDT

@@ -11,28 +11,28 @@
 #ifdef CONFIG_X86_64
 #include <asm/page_64.h>
 #else
-#include <asm/page_32.h>
+// #include <asm/page_32.h>
 #endif	/* CONFIG_X86_64 */
 
 #ifndef __ASSEMBLY__
 
 struct page;
 
-#include <linux/range.h>
-extern struct range pfn_mapped[];
+// #include <linux/range.h>
+// extern struct range pfn_mapped[];
 extern int nr_pfn_mapped;
 
-static inline void clear_user_page(void *page, unsigned long vaddr,
-				   struct page *pg)
-{
-	clear_page(page);
-}
+// static inline void clear_user_page(void *page, unsigned long vaddr,
+				   // struct page *pg)
+// {
+	// clear_page(page);
+// }
 
-static inline void copy_user_page(void *to, void *from, unsigned long vaddr,
-				  struct page *topage)
-{
-	copy_page(to, from);
-}
+// static inline void copy_user_page(void *to, void *from, unsigned long vaddr,
+				  // struct page *topage)
+// {
+	// copy_page(to, from);
+// }
 
 #define alloc_zeroed_user_highpage_movable(vma, vaddr) \
 	alloc_page_vma(GFP_HIGHUSER_MOVABLE | __GFP_ZERO, vma, vaddr)
@@ -83,8 +83,8 @@ static __always_inline u64 __is_canonical_address(u64 vaddr, u8 vaddr_bits)
 
 #endif	/* __ASSEMBLY__ */
 
-#include <asm-generic/memory_model.h>
-#include <asm-generic/getorder.h>
+// #include <asm-generic/memory_model.h>
+// #include <asm-generic/getorder.h>
 
 #define HAVE_ARCH_HUGETLB_UNMAPPED_AREA
 

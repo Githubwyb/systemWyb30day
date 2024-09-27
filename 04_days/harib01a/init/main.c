@@ -5,7 +5,7 @@
 
 #define write_mem8(addr, data8) (*(volatile char *)(addr)) = (char)data8
 
-void start_kernel(void) {
+void __attribute__((section(".text.first"))) start_kernel(void) {
     unsigned int i;
     for (i = 0x000a0000; i < 0x000affff; ++i) {
         write_mem8(i, 15);

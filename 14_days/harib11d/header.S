@@ -1,6 +1,9 @@
 # head.S bootloader下一步入口，存放于软盘中的二进制内核文件头部
 #include <uapi/asm/processor-flags.h>
 
+#define GDT_ENTRY_KERNEL_CS 12
+#define GDT_ENTRY_KERNEL_DS 13
+
 # boot_info结构体成员对应的地址，给c语言读取使用
 #define CYLS	 0x0ff0
 #define LEDS	 0x0ff1
@@ -12,6 +15,15 @@
 #define SCRNY	 0x0ff6
 # 图形缓冲区的起始地址
 #define VRAM	 0x0ff8
+
+# vbe模式，8位颜色，经测试，qemu支持如下模式
+# 参考：https://en.wikipedia.org/wiki/VESA_BIOS_Extensions
+# 0x0100		640x400
+# 0x0101		640x480
+# 0x0105		1024x768
+# 0x0107		1280x1024
+# 0x011c		1600x1200
+#define VBEMODE         0x0105
 
 # 栈起始位置，共1MB。0x002fffff-0x003fffff
 #define STACK    	0x003fffff
@@ -29,15 +41,69 @@
 bootsect_start:
 	.code16		# 后面代码是16位代码段，cpu默认开启在真实模式，所以要使用16位汇编开始
 
-	# 设置屏幕模式
-	movw		$0x4105,%bx			# VGA图形，1024 x 768 x 8位颜色
-	movw		$0x4f02,%ax
+	# 确认VBE是否存在
+	mov 	$0x9000,%ax
+	mov 	%ax,%es
+	mov 	$0,%di
+	mov 	$0x4f00,%ax
+	int 	$0x10
+	cmp 	$0x004f,%ax
+	jne 	scrn320
+
+	# 检查vbe版本需要是0x200，即VBE 2.0
+	mov 	%es:(%di,4),%ax
+	cmp 	$0x0200,%ax
+	jb  	scrn320
+
+	# 测试画面模式是否能使用，需要ax为0x004f
+	mov 	$VBEMODE,%cx
+	mov 	$0x4f01,%ax
+	int 	$0x10
+	cmp 	$0x004f,%ax
+	jne  	scrn320
+
+	# 画面的模式 包含了非常多的重要信息，如模式属性
+    # WORD  [es:di+0x00]: 模式属性，第7位需要是1，这样才能加上0x4000
+    # WORD  [es:di+0x12]: X的分辨率
+    # WORD  [es:di+0x14]: Y的分辨率
+    # BYTE  [es:di+0x19]: 颜色数，必须为8，我们代码用的就是8
+    # BYTE  [es:di+0x1b]: 颜色的指定方法，必须为4，即调色板模式
+    # DWORD [es:di+0x28]: VRAM的地址
+
+    # 确认颜色数
+	movb 	%es:0x19(%di),%al
+	cmp 	$8,%al
+	jne 	scrn320
+    # 确认颜色指定方法
+	movb 	%es:0x1b(%di),%al
+	cmp 	$4,%al
+	jne 	scrn320
+
+    # 重新调用设置画面模式，需要加上0x4000
+    mov 	$(VBEMODE+0x4000),%bx
+	mov 	$0x4f02,%ax
+	int 	$0x10
+
+	# 记录对应信息给到c语言
+	movb 	$8,(VMODE)
+	mov 	%es:0x12(%di),%ax
+	mov 	%ax,(SCRNX)
+	mov 	%es:0x14(%di),%ax
+	mov 	%ax,(SCRNY)
+	movl 	%es:0x28(%di),%eax
+	movl 	%eax,(VRAM)
+	jmp 	keystatus
+
+scrn320:
+	movb		$0x13,%al			# VGA图形，320 x 200 x 8位颜色
+	movb		$0x00,%ah
 	int			$0x10
 	# 记录画面参数到内存中，给c获取使用
 	movb		$0x08,(VMODE)
-	movw		$1024,(SCRNX)
-	movw		$768,(SCRNY)
-	movl		$0xfd000000,(VRAM) # 此模式下vram为0xa0000 ~ 0xaffff
+	movw		$320,(SCRNX)
+	movw		$200,(SCRNY)
+	movl		$0x000a0000,(VRAM) # 此模式下vram为0xa0000 ~ 0xaffff
+keystatus:
 	# 让BIOS告诉我键盘的LED状态
 	movb		$0x02,%ah
 	int			$0x16				# keyboard BIOS
@@ -73,8 +139,8 @@ seta20gate:
 	orl		$X86_CR0_PE,%eax	# PE设置为1切换到保护模式
 	movl	%eax,%cr0
 
-	# 汇编代码在第2个段，所以跳转使用第二个段加上偏移
-	ljmp	$(2*8), $protcseg
+
+	jmp protcseg
 
 msg:
   	.asciz "\n\nkernel is loading"
@@ -95,15 +161,14 @@ puts:
 over:
 	ret
 
-	.code32		# 后面代码是32位代码段
 protcseg:
 	# Set up the protected-mode data segment registers
-	movw    $(1*8), %ax    			# Our data segment selector
-	movw    %ax, %ds                # -> DS: Data Segment
-	movw    %ax, %es                # -> ES: Extra Segment
-	movw    %ax, %fs                # -> FS
-	movw    %ax, %gs                # -> GS
-	movw    %ax, %ss                # -> SS: Stack Segment
+	movw    $(GDT_ENTRY_KERNEL_DS*8), %ax   # Our data segment selector
+	movw    %ax, %ds                		# -> DS: Data Segment
+	movw    %ax, %es                		# -> ES: Extra Segment
+	movw    %ax, %fs                		# -> FS
+	movw    %ax, %gs                		# -> GS
+	movw    %ax, %ss                		# -> SS: Stack Segment
 	# 设置栈指针到栈顶，调用c函数
 	movl    $STACK,%esp
 
@@ -128,8 +193,9 @@ protcseg:
 	subl	$(512/4),%ecx					# 去除启动扇区
 	call	asmmemcpy
 
-	# 调用c语言第一个指令，位置是第3个段的首地址
-	ljmp	$(3*8),$0x0000
+	# 调用c语言第一个指令，位置是CS段的首地址
+	# 已经使用段管理内存了，跳转32位需要使用ljmp进行段+偏移的方式跳转
+	ljmp	$(GDT_ENTRY_KERNEL_CS*8),$0x0000
 
 spin:
   	jmp spin
@@ -170,20 +236,28 @@ waitkbdout:
 #     u16 base2 : 8;      // 段的对应的内存实际地址high
 # } __attribute__((packed));
 # 第0个段是空的，全部是0
-# 第1个段是数据段，cpu管理的总内存，从0x00000000开始，0x92代表可读可写，内存上限为0xfffff，g = 1代表4K为单位，4G
+# 第12个段是代码段，c代码所在位置，从0x00280000开始，0x9a代表可读可执行，内存上限为0x7ffff，g = 0代表字节为单位，512K
+# 	按照结构体和16位低位高位计算 0xffff, 0x0000, 0x9a28, 0x0047
+# 第13个段是数据段，cpu管理的总内存，从0x00000000开始，0x92代表可读可写，内存上限为0xfffff，g = 1代表4K为单位，4G
 # 	按照结构体和16位低位高位计算 0xffff, 0x0000, 0x9200, 0x00cf
-# 第2个段是代码段，启动区所在位置，从0x00000000开始，0x9a代表可读可执行，内存上限为0x7ffff，g = 0代表字节为单位，512K
-# 	按照结构体和16位低位高位计算 0xffff, 0x0000, 0x9a00, 0x0047
-# 第3个段是代码段，c代码所在位置，从0x00280000开始，0x9a代表可读可执行，内存上限为0x0007f，g = 1代表4K为单位，512K
-# 	按照结构体和16位低位高位计算 0x007f, 0x0000, 0x9a28, 0x00c0
 .p2align	2	# 按照2^2 = 4字节对齐
 gdt:
-	.word	0x0000,0x0000,0x0000,0x0000		# null seg
-	.word	0xffff,0x0000,0x9200,0x00cf		# 可读写的段，数据段
-	.word	0xffff,0x0000,0x9a00,0x0047		# 汇编代码所在内存位置
-	.word	0x007f,0x0000,0x9a28,0x00c0		# 给c代码使用的段
+	.word	0x0000,0x0000,0x0000,0x0000		# 0  null seg
+	.word	0x0000,0x0000,0x0000,0x0000		# 1  null seg
+	.word	0x0000,0x0000,0x0000,0x0000		# 2  null seg
+	.word	0x0000,0x0000,0x0000,0x0000		# 3  null seg
+	.word	0x0000,0x0000,0x0000,0x0000		# 4  null seg
+	.word	0x0000,0x0000,0x0000,0x0000		# 5  null seg
+	.word	0x0000,0x0000,0x0000,0x0000		# 6  null seg
+	.word	0x0000,0x0000,0x0000,0x0000		# 7  null seg
+	.word	0x0000,0x0000,0x0000,0x0000		# 8  null seg
+	.word	0x0000,0x0000,0x0000,0x0000		# 9  null seg
+	.word	0x0000,0x0000,0x0000,0x0000		# 10 null seg
+	.word	0x0000,0x0000,0x0000,0x0000		# 11 null seg
+	.word	0xffff,0x0000,0x9a28,0x0047		# 12 给c代码使用的段，代码段
+	.word	0xffff,0x0000,0x9200,0x00cf		# 13 可读写的段，数据段
 
 gdtdesc:
-  	.word   8*4-1                           # sizeof(gdt) - 1
+  	.word   8*14-1                          # sizeof(gdt) - 1
   	.long   gdt                             # address gdt
 start_kernel:

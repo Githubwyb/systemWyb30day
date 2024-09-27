@@ -1,9 +1,12 @@
 TOOLPATH = ../../z_tools
-INCLUDE = -I$(TOOLPATH)/haribote/ -I./include/ -I./arch/x86/include/ -I./arch/x86/include/uapi/ -I.
-CFLAGS  = -Wall -Werror -Wno-int-to-pointer-cast -Wno-unused -Wno-array-bounds
+KERNEL_FILES = ../../kernel_files
+INCLUDE = -I.
+INCLUDE += -I$(KERNEL_FILES)/arch/x86 -I$(KERNEL_FILES)/arch/x86/include/ -I$(KERNEL_FILES)/arch/x86/include/uapi/ -I$(KERNEL_FILES)/arch/x86/include/generated/ -I$(KERNEL_FILES)/arch/x86/include/generated/uapi/
+INCLUDE += -I$(KERNEL_FILES)/include/ -I$(KERNEL_FILES)/include/uapi/ -I.
+CFLAGS  = -Wall -Werror -Wno-int-to-pointer-cast -Wno-unused -Wno-array-bounds -Wno-int-conversion
 # -fno-pie 生成位置相关代码，位置无关代码暂时不清楚为什么会运行有问题，访问全局变量失败导致调色板设置有问题
 # -fno-stack-protector gcc默认会添加栈安全检查，但是这个会依赖glibc的库，导致undefined reference to `__stack_chk_fail'的问题
-CFLAGS += -MD -Os -fno-pie -nostdinc -nostdlib -fno-builtin -fno-stack-protector -fno-omit-frame-pointer -D_SIZE_T -DCONFIG_X86_32 -m32
+CFLAGS += -MD -Os -fno-pie -nostdinc -nostdlib -fno-builtin -fno-stack-protector -DCONFIG_X86_32 -DBITS_PER_LONG=32 -DBITS_PER_LONG_LONG=64 -D__KERNEL__ -D__LITTLE_ENDIAN -m32
 LDFLAGS	= -m elf_i386 -no-pie
 
 all: img
@@ -12,7 +15,7 @@ bootloader : bootloader.S
 	nasm -w-zeroing -o $@.bin $@.S
 
 #下面四个命令通过模式匹配获取当前目录下的所有C文件
-SRCDIR = ./ ./lib/ ./init/
+SRCDIR = ./ $(KERNEL_FILES)/arch/x86/lib/ $(KERNEL_FILES)/lib/ $(KERNEL_FILES)/init/ ./init/
 
 C_SOURCES = $(foreach d,$(SRCDIR),$(wildcard $(d)*.c))
 C_OBJS = $(patsubst %.c,%.o,$(C_SOURCES))

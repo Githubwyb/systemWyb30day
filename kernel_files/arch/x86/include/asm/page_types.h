@@ -4,7 +4,7 @@
 
 #include <linux/const.h>
 #include <linux/types.h>
-#include <linux/mem_encrypt.h>
+// #include <linux/mem_encrypt.h>
 
 /* PAGE_SHIFT determines the page size */
 #define PAGE_SHIFT		12
@@ -46,7 +46,7 @@
 #include <asm/page_64_types.h>
 #define IOREMAP_MAX_ORDER       (PUD_SHIFT)
 #else
-#include <asm/page_32_types.h>
+// #include <asm/page_32_types.h>
 #define IOREMAP_MAX_ORDER       (PMD_SHIFT)
 #endif	/* CONFIG_X86_64 */
 

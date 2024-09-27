@@ -60,10 +60,10 @@ void init_gdtidt(void) {
     for (i = 0; i < LIMIT_GDT / sizeof(struct SEGMENT_DESCRIPTOR); i++) {
         set_segmdesc(gdt + i, 0, 0, 0);
     }
-    // cpu管理的总内存
-    set_segmdesc(gdt + 1, 0xffffffff, 0x00000000, AR_DATA32_RW);
-    // c语言的段，C语言只能使用第3个段，使用第4个或第2个都会在中断里面崩溃，不知道为什么
-    set_segmdesc(gdt + 3, LIMIT_BOTPAK, ADR_BOTPAK, AR_CODE32_ER);
+    // CS段，给c语言使用的段
+    set_segmdesc(gdt + 12, LIMIT_BOTPAK, ADR_BOTPAK, AR_CODE32_ER);
+    // DS段，cpu管理所有内存的段
+    set_segmdesc(gdt + 13, 0xffffffff, 0x00000000, AR_DATA32_RW);
     load_gdtr(LIMIT_GDT, ADR_GDT);
 
     // 初始化IDT
@@ -72,9 +72,9 @@ void init_gdtidt(void) {
     }
 
     // 注册中断处理函数
-    set_gatedesc(idt + 0x21, (int)asm_inthandler21-ADR_BOTPAK, 3 * 8, AR_INTGATE32);
-    // set_gatedesc(idt + 0x27, (int)asm_inthandler27, 3 * 8, AR_INTGATE32);
-    // set_gatedesc(idt + 0x2c, (int)asm_inthandler2c, 3 * 8, AR_INTGATE32);
+    set_gatedesc(idt + 0x21, (int)asm_inthandler21 - ADR_BOTPAK, 12 * 8, AR_INTGATE32);
+    // set_gatedesc(idt + 0x27, (int)asm_inthandler27-ADR_BOTPAK, 12 * 8, AR_INTGATE32);
+    // set_gatedesc(idt + 0x2c, (int)asm_inthandler2c-ADR_BOTPAK, 12 * 8, AR_INTGATE32);
 
     load_idtr(LIMIT_IDT, ADR_IDT);
     return;
