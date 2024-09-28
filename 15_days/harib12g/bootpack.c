@@ -16,14 +16,42 @@
 static void make_window8(unsigned char *buf, int xsize, int ysize, char *title);
 static void make_textbox8(struct SHEET *sht, int x0, int y0, int sx, int sy, int c);
 
-static struct SHEET *s_sht_back = NULL;
-
-void taskswitch(void) { __asm__ __volatile__("ljmp %0, %1" : : "i"(2 * 8), "i"(0x0000)); }
-
-static void task_b_main(void) {
+static void task_b_main(struct SHEET *sht_back) {
     LOG_INFO("task_b_main start");
+
+    FIFO32Type fifo;
+    INIT_KFIFO(fifo);
+    struct TIMER timer;
+    timer_init(&timer, &fifo, 1);
+    timer_settime(&timer, jiffies + msecs_to_jiffies(20));
+    struct TIMER timer_1s;
+    timer_init(&timer_1s, &fifo, 100);
+    timer_settime(&timer_1s, jiffies + msecs_to_jiffies(1 * MSEC_PER_SEC));
+
+    int count = 0;
+    int count0 = 0;
+    char s[11];
     for (;;) {
-        io_hlt();
+        ++count;
+
+        io_cli();
+        if (kfifo_is_empty(&fifo)) {
+            io_stihlt();
+            continue;
+        }
+
+        int data = 0;
+        kfifo_get(&fifo, &data);
+        io_sti();
+        if (data == 1) {
+            sprintf(s, "%10d", count);
+            put_font8_str_sht(sht_back, 0, 144, COL8_FFFFFF, COL8_009999, s);
+            timer_settime(&timer, jiffies + msecs_to_jiffies(20));
+        } else if (data == 100) {
+            LOG_INFO("task_b speed %d", count-count0);
+            count0 = count;
+            timer_settime(&timer_1s, jiffies + msecs_to_jiffies(1 * MSEC_PER_SEC));
+        }
     }
 }
 
@@ -46,9 +74,9 @@ void HariMain(void) {
     LOG_INFO("init gdtidt done");
 
     // 处理定时器
-    struct TIMER timer, timer2, timer3;
+    struct TIMER timer, timer2, timer3, timer_ts;
     timer_init(&timer, &fifo, 10);
-    timer_settime(&timer, jiffies + msecs_to_jiffies(5 * MSEC_PER_SEC));
+    timer_settime(&timer, jiffies + msecs_to_jiffies(10 * MSEC_PER_SEC));
     timer_init(&timer2, &fifo, 3);
     timer_settime(&timer2, jiffies + msecs_to_jiffies(3 * MSEC_PER_SEC));
     timer_init(&timer3, &fifo, 1);
@@ -83,11 +111,55 @@ void HariMain(void) {
              memtotal / 1024 / 1024,
              memman_total(memman) / 1024);
 
+    struct SHTCTL *shtctl = shtctl_init(memman, binfo->vram, binfo->scrnx, binfo->scrny);
+    LOG_INFO("shtctl init done, addr 0x%x", shtctl);
+
+    /********** 初始化背景 **********/
+    struct SHEET *sht_back = sheet_alloc(shtctl);
+    unsigned char *buf_back = (unsigned char *)memman_alloc_4k(memman, binfo->scrnx * binfo->scrny);
+    init_screen(buf_back, binfo->scrnx, binfo->scrny);
+    sheet_setbuf(sht_back, buf_back, binfo->scrnx, binfo->scrny, -1);  // 不存在透明色
+    sheet_slide(sht_back, 0, 0);                                       // 把背景放到左上角
+    sheet_updown(sht_back, 0);                                         // 把背景放到最底层0
+    LOG_INFO("sht_back init done, addr 0x%x", sht_back);
+
+    /********** 初始化窗口 **********/
+    struct SHEET *sht_win = sheet_alloc(shtctl);
+    unsigned char *buf_win = (unsigned char *)memman_alloc_4k(memman, 160 * 52);
+    make_window8(buf_win, 160, 52, "window");
+    sheet_setbuf(sht_win, buf_win, 160, 52, -1);  // 没有透明色
+    make_textbox8(sht_win, 8, 28, 144, 16, COL8_FFFFFF);
+    sheet_slide(sht_win, 80, 72);
+    sheet_updown(sht_win, 1);  // 把窗口放到1层
+    LOG_INFO("sht_win init done, addr 0x%x", sht_win);
+
+    /********** 初始化鼠标 **********/
+    struct SHEET *sht_mouse = sheet_alloc(shtctl);
+    unsigned char buf_mouse[256];
+    init_mouse_cursor8(buf_mouse, 99);               // 99是透明色
+    sheet_setbuf(sht_mouse, buf_mouse, 16, 16, 99);  // 99是透明色
+    // 先把鼠标画到正中间
+    int mx = (binfo->scrnx - 16) / 2;
+    int my = (binfo->scrny - 28 - 16) / 2;
+    sheet_slide(sht_mouse, mx, my);
+    sheet_updown(sht_mouse, 2);  // 把鼠标放到2层
+    LOG_INFO("sht_mouse init done, addr 0x%x", sht_mouse);
+
+    // 在背景上打印内存信息和鼠标位置
+    sprintf(s, "(%3d, %3d)", mx, my);
+    put_font8_str_sht(sht_back, 0, 0, COL8_FFFFFF, COL8_009999, s);
+    sprintf(s, "memory %dMB    free: %dKB", memtotal / 1024 / 1024, memman_total(memman) / 1024);
+    put_font8_str_sht(sht_back, 0, 32, COL8_FFFFFF, COL8_009999, s);
+
     /********** 任务切换 **********/
     struct desc_struct *gdt = (struct desc_struct *)ADR_GDT;
     struct tss_struct tss_a, tss_b;
     // 申请栈内存，由于栈指针是从高地址向低地址移动，所以esp栈顶指针要设置成最高地址
     int task_b_esp = memman_alloc_4k(memman, 64 * 1024) + 64 * 1024;
+    task_b_esp -= 8;
+    // 将sht_back放到esp+4
+    *(int *)(task_b_esp + 4) = sht_back;
+    LOG_HEX(task_b_esp, 8);
 
     tss_a.x86_tss.ldt = 0;
     tss_b.x86_tss.ldt = 0;
@@ -118,45 +190,9 @@ void HariMain(void) {
     write_gdt_entry(gdt, 1, &tss_a_desc, DESC_TSS);
     write_gdt_entry(gdt, 2, &tss_b_desc, DESC_TSS);
     load_tr_desc(1 * 8);
+    mt_timer_init();
 
-    struct SHTCTL *shtctl = shtctl_init(memman, binfo->vram, binfo->scrnx, binfo->scrny);
-
-    /********** 初始化背景 **********/
-    struct SHEET *sht_back = sheet_alloc(shtctl);
-    s_sht_back = sht_back;
-    unsigned char *buf_back = (unsigned char *)memman_alloc_4k(memman, binfo->scrnx * binfo->scrny);
-    init_screen(buf_back, binfo->scrnx, binfo->scrny);
-    sheet_setbuf(sht_back, buf_back, binfo->scrnx, binfo->scrny, -1);  // 不存在透明色
-    sheet_slide(sht_back, 0, 0);                                       // 把背景放到左上角
-    sheet_updown(sht_back, 0);                                         // 把背景放到最底层0
-
-    /********** 初始化窗口 **********/
-    struct SHEET *sht_win = sheet_alloc(shtctl);
-    unsigned char *buf_win = (unsigned char *)memman_alloc_4k(memman, 160 * 52);
-    make_window8(buf_win, 160, 52, "window");
-    sheet_setbuf(sht_win, buf_win, 160, 52, -1);  // 没有透明色
-    make_textbox8(sht_win, 8, 28, 144, 16, COL8_FFFFFF);
-    sheet_slide(sht_win, 80, 72);
-    sheet_updown(sht_win, 1);  // 把窗口放到1层
-
-    /********** 初始化鼠标 **********/
-    struct SHEET *sht_mouse = sheet_alloc(shtctl);
-    unsigned char buf_mouse[256];
-    init_mouse_cursor8(buf_mouse, 99);               // 99是透明色
-    sheet_setbuf(sht_mouse, buf_mouse, 16, 16, 99);  // 99是透明色
-    // 先把鼠标画到正中间
-    int mx = (binfo->scrnx - 16) / 2;
-    int my = (binfo->scrny - 28 - 16) / 2;
-    sheet_slide(sht_mouse, mx, my);
-    sheet_updown(sht_mouse, 2);  // 把鼠标放到2层
-
-    // 在背景上打印内存信息和鼠标位置
-    sprintf(s, "(%3d, %3d)", mx, my);
-    put_font8_str_sht(sht_back, 0, 0, COL8_FFFFFF, COL8_009999, s);
-    sprintf(s, "memory %dMB    free: %dKB", memtotal / 1024 / 1024, memman_total(memman) / 1024);
-    put_font8_str_sht(sht_back, 0, 32, COL8_FFFFFF, COL8_009999, s);
-
-    LOG_INFO("init windows done, memory %dMB, free: %dKB", memtotal / 1024 / 1024, memman_total(memman) / 1024);
+    LOG_INFO("init all done, memory %dMB, free: %dKB", memtotal / 1024 / 1024, memman_total(memman) / 1024);
 
     struct MOUSE_DEC mdec;
     mdec.phase = 0;
@@ -262,7 +298,6 @@ void HariMain(void) {
                 case 10:
                     put_font8_str_sht(sht_back, 0, 64, COL8_FFFFFF, COL8_009999, "10[sec]");
                     LOG_INFO("count: %lu", count);
-                    taskswitch();
                     break;
                 case 3:
                     put_font8_str_sht(sht_back, 0, 80, COL8_FFFFFF, COL8_009999, "3[sec]");

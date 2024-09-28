@@ -169,7 +169,7 @@ static inline void set_tssldt_descriptor(void *d, unsigned long addr,
 {
 	struct ldttss_desc *desc = d;
 
-	memset(desc, 0, sizeof(*desc));
+	// TODO memset(desc, 0, sizeof(*desc));
 
 	desc->limit0		= (u16) size;
 	desc->base0		= (u16) addr;

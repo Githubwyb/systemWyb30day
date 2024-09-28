@@ -20,10 +20,30 @@ static struct SHEET *s_sht_back = NULL;
 
 void taskswitch(void) { __asm__ __volatile__("ljmp %0, %1" : : "i"(2 * 8), "i"(0x0000)); }
 
+void taskswitcha(void) { __asm__ __volatile__("ljmp %0, %1" : : "i"(1 * 8), "i"(0x0000)); }
+
 static void task_b_main(void) {
     LOG_INFO("task_b_main start");
+
+    FIFO32Type fifo;
+    struct TIMER timer;
+    timer_init(&timer, &fifo, 1);
+    timer_settime(&timer, jiffies + msecs_to_jiffies(5 * MSEC_PER_SEC));
+
     for (;;) {
-        io_hlt();
+        io_cli();
+        if (kfifo_is_empty(&fifo)) {
+            io_stihlt();
+            continue;
+        }
+
+        int data = 0;
+        kfifo_get(&fifo, &data);
+        io_sti();
+        if (data == 1) {
+            LOG_INFO("5 seconds reached, back to task a");
+            taskswitcha();
+        }
     }
 }
 

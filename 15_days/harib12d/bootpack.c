@@ -18,12 +18,44 @@ static void make_textbox8(struct SHEET *sht, int x0, int y0, int sx, int sy, int
 
 static struct SHEET *s_sht_back = NULL;
 
-void taskswitch(void) { __asm__ __volatile__("ljmp %0, %1" : : "i"(2 * 8), "i"(0x0000)); }
+static inline void farjmp(u16 seg, u16 offset) {
+    __asm__ __volatile__("ljmp *%0\n"
+                         :
+                         : "m"((struct {
+                             unsigned int off;
+                             unsigned short sel;
+                         }){offset, seg}));
+}
 
 static void task_b_main(void) {
     LOG_INFO("task_b_main start");
+
+    FIFO32Type fifo;
+    INIT_KFIFO(fifo);
+    struct TIMER timer;
+    timer_init(&timer, &fifo, 1);
+    timer_settime(&timer, jiffies + msecs_to_jiffies(20));
+
+    int count = 0;
+    char s[11];
     for (;;) {
-        io_hlt();
+        ++count;
+
+        io_cli();
+        if (kfifo_is_empty(&fifo)) {
+            io_stihlt();
+            continue;
+        }
+
+        int data = 0;
+        kfifo_get(&fifo, &data);
+        io_sti();
+        if (data == 1) {
+            sprintf(s, "%10d", count);
+            put_font8_str_sht(s_sht_back, 0, 144, COL8_FFFFFF, COL8_009999, s);
+            farjmp(1 * 8, 0x0000);
+            timer_settime(&timer, jiffies + msecs_to_jiffies(20));
+        }
     }
 }
 
@@ -46,13 +78,15 @@ void HariMain(void) {
     LOG_INFO("init gdtidt done");
 
     // 处理定时器
-    struct TIMER timer, timer2, timer3;
+    struct TIMER timer, timer2, timer3, timer_ts;
     timer_init(&timer, &fifo, 10);
-    timer_settime(&timer, jiffies + msecs_to_jiffies(5 * MSEC_PER_SEC));
+    timer_settime(&timer, jiffies + msecs_to_jiffies(10 * MSEC_PER_SEC));
     timer_init(&timer2, &fifo, 3);
     timer_settime(&timer2, jiffies + msecs_to_jiffies(3 * MSEC_PER_SEC));
     timer_init(&timer3, &fifo, 1);
     timer_settime(&timer3, jiffies + msecs_to_jiffies(500));
+    timer_init(&timer_ts, &fifo, 2);
+    timer_settime(&timer_ts, jiffies + msecs_to_jiffies(20));
 
     LOG_INFO("create timer done");
 
@@ -175,7 +209,10 @@ void HariMain(void) {
         unsigned int i = 0;
         kfifo_get(&fifo, &i);
         io_sti();
-        if (256 <= i && i <= 511) {
+        if (i == 2) {
+            farjmp(2 * 8, 0x0000);
+            timer_settime(&timer_ts, jiffies + msecs_to_jiffies(20));
+        } else if (256 <= i && i <= 511) {
             // 处理键盘数据
             i -= 256;
             static char keytable[0x54] = {
@@ -262,7 +299,6 @@ void HariMain(void) {
                 case 10:
                     put_font8_str_sht(sht_back, 0, 64, COL8_FFFFFF, COL8_009999, "10[sec]");
                     LOG_INFO("count: %lu", count);
-                    taskswitch();
                     break;
                 case 3:
                     put_font8_str_sht(sht_back, 0, 80, COL8_FFFFFF, COL8_009999, "3[sec]");
